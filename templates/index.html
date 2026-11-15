@@ -93,13 +93,6 @@
                     <span class="hidden sm:inline">Mở Google Drive</span>
                     <span class="sm:hidden">Drive</span>
                 </a>
-
-                <!-- Nút Cài đặt Drive & PIN -->
-                <button type="button" onclick="openSettingsModal()"
-                    class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/80 active:bg-slate-200 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 transition">
-                    <span id="driveDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
-                    <span>Drive & PIN</span>
-                </button>
             </div>
         </div>
     </header>
@@ -343,51 +336,6 @@
         </div>
     </div>
 
-    <!-- MODAL CÀI ĐẶT MÃ PIN & GOOGLE DRIVE -->
-    <div id="settingsModal"
-        class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base font-bold text-slate-900">Cài Đặt Mã PIN & Google Drive</h3>
-                <button type="button" onclick="closeSettingsModal()"
-                    class="text-slate-400 hover:text-slate-600 p-1">✕</button>
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">
-                    🔑 Mã PIN đang lưu trên thiết bị này
-                </label>
-                <input type="password" id="inputAppPin" inputmode="numeric" placeholder="Nhập mã PIN"
-                    class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-base font-bold tracking-widest focus:outline-none focus:border-blue-500" />
-            </div>
-
-            <div class="pt-2 border-t border-slate-100">
-                <label class="block text-xs font-semibold text-slate-600 mb-1">
-                    🟢 Google Apps Script Webhook URL
-                </label>
-                <input type="url" id="inputDriveWebhook" placeholder="https://script.google.com/macros/s/.../exec"
-                    class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono focus:outline-none focus:border-blue-500" />
-                <div id="driveLinksInfo" class="hidden mt-2 flex items-center gap-3 text-xs">
-                    <a id="modalFolderLink" href="#" target="_blank"
-                        class="text-blue-600 hover:underline font-medium">📂 Mở thư mục Gara_Data</a>
-                    <a id="modalFileLink" href="#" target="_blank"
-                        class="text-emerald-600 hover:underline font-medium">📄 Mở file tháng này</a>
-                </div>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onclick="closeSettingsModal()"
-                    class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">
-                    Đóng
-                </button>
-                <button type="button" onclick="saveSettings()"
-                    class="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold">
-                    Lưu cài đặt
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
         let recognition = null;
         let isRecording = false;
@@ -436,42 +384,6 @@
             const mm = String(now.getMonth() + 1).padStart(2, '0');
             const yyyy = now.getFullYear();
             document.getElementById('fieldThoiGian').value = `${dd}/${mm}/${yyyy}`;
-        }
-
-        function openSettingsModal() {
-            document.getElementById('inputAppPin').value = getSavedPin();
-            document.getElementById('settingsModal').classList.remove('hidden');
-        }
-
-        function closeSettingsModal() {
-            document.getElementById('settingsModal').classList.add('hidden');
-        }
-
-        async function saveSettings() {
-            const pin = document.getElementById('inputAppPin').value.trim() || '1234';
-            const webhookUrl = document.getElementById('inputDriveWebhook').value.trim();
-            localStorage.setItem('gara_app_pin', pin);
-
-            try {
-                const res = await fetch('/api/drive-config?month=' + encodeURIComponent(selectedMonthKey), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-App-Pin': pin
-                    },
-                    body: JSON.stringify({ webhook_url: webhookUrl, pin })
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    showAlert((data.errors || ['Mã PIN không đúng']).join(' • '), 'error');
-                    return;
-                }
-                closeSettingsModal();
-                showAlert('Đã lưu cài đặt!', 'success');
-                await loadRecords(selectedMonthKey);
-            } catch (err) {
-                showAlert('Lỗi khi lưu cài đặt.', 'error');
-            }
         }
 
         function initSpeechRecognition() {
@@ -645,8 +557,7 @@
                 const result = await res.json();
 
                 if (res.status === 401 || result.require_pin) {
-                    openSettingsModal();
-                    showAlert('Mã PIN chưa đúng.', 'error');
+                    showPinGate(true);
                     return;
                 }
 
@@ -664,8 +575,6 @@
                 } else if (result.drive && result.drive.error) {
                     driveNote = `<br/><span class="text-amber-700">⚠️ Chưa lưu được lên Drive: ${result.drive.error}</span>`;
                     alertType = 'warning';
-                } else if (result.drive && result.drive.reason) {
-                    driveNote = `<br/><span class="text-amber-700">⚠️ Chưa gắn link Google Drive (Bấm nút <b>Drive & PIN</b> ở góc phải trên để dán link).</span>`;
                 }
                 const giaText = result.record.gia ? `: <b>${result.record.gia}đ</b>` : '';
                 const staffText = result.record.nguoi_phu_trach ? ` • Phụ trách: <b>${result.record.nguoi_phu_trach}</b>` : '';
@@ -698,30 +607,13 @@
 
         function updateDriveUI(drive) {
             if (!drive) return;
-            const dot = document.getElementById('driveDot');
             const headerBtn = document.getElementById('btnOpenDriveHeader');
-            const webhookInput = document.getElementById('inputDriveWebhook');
-            const linksInfo = document.getElementById('driveLinksInfo');
-
-            if (drive.webhook_url && !webhookInput.value) {
-                webhookInput.value = drive.webhook_url;
-            }
-
-            if (drive.configured) {
-                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-                const targetUrl = drive.file_url || drive.folder_url;
-                if (targetUrl) {
-                    headerBtn.href = targetUrl;
-                    headerBtn.classList.remove('hidden');
-                    headerBtn.classList.add('inline-flex');
-                }
-                if (drive.folder_url || drive.file_url) {
-                    linksInfo.classList.remove('hidden');
-                    if (drive.folder_url) document.getElementById('modalFolderLink').href = drive.folder_url;
-                    if (drive.file_url) document.getElementById('modalFileLink').href = drive.file_url;
-                }
+            const targetUrl = drive.file_url || drive.folder_url;
+            if (drive.configured && targetUrl) {
+                headerBtn.href = targetUrl;
+                headerBtn.classList.remove('hidden');
+                headerBtn.classList.add('inline-flex');
             } else {
-                dot.className = 'w-2 h-2 rounded-full bg-slate-400';
                 headerBtn.classList.add('hidden');
             }
         }
@@ -839,7 +731,7 @@
                     headers: { 'X-App-Pin': getSavedPin() }
                 });
                 if (res.status === 401) {
-                    openSettingsModal();
+                    showPinGate(true);
                     return;
                 }
                 if (res.ok) {
