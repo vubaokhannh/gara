@@ -74,7 +74,8 @@
                 </div>
                 <div>
                     <h1 class="text-sm sm:text-lg font-bold text-slate-900 leading-tight">Gara Voice</h1>
-                    <p class="text-[11px] text-slate-400 hidden sm:block">Hệ thống ghi nhận xe & đồng bộ Excel theo tháng</p>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Hệ thống ghi nhận xe & đồng bộ Excel theo
+                        tháng</p>
                 </div>
             </div>
 
@@ -88,9 +89,9 @@
 
                 <!-- Nút mở Google Drive -->
                 <a id="btnOpenDriveHeader" href="#" target="_blank" rel="noopener"
-                    class="hidden items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-full text-xs font-semibold transition">
-                    <span>🟢</span>
-                    <span class="hidden sm:inline">Mở Google Drive</span>
+                    class="hidden items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-full text-xs font-semibold transition">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span class="hidden sm:inline">Google Drive</span>
                     <span class="sm:hidden">Drive</span>
                 </a>
             </div>
@@ -135,9 +136,7 @@
                     <p id="micStatusMobile" class="text-sm font-bold text-slate-800 mt-4">
                         Chạm vào Mic để nói
                     </p>
-                    <p class="text-xs text-slate-400 mt-1 max-w-xs">
-                        “Xe 51A 12345, Mazda CX5, sơn cản trước, 1 triệu 2, chuyển khoản, thợ Minh, hẹn chiều lấy”
-                    </p>
+
                 </div>
 
                 <!-- GIAO DIỆN DESKTOP (>= 640px): GIỮ BỐ CỤC NGANG TIỆN LỢI -->
@@ -162,7 +161,7 @@
                     <!-- Ô nhập giọng nói / bàn phím -->
                     <div class="flex-1 w-full">
                         <textarea id="voiceInput" rows="2"
-                            placeholder="Hoặc chạm vào đây dùng 🎙️ bàn phím: “Xe 51A 12345, Mazda CX5, thay dầu máy, 850 nghìn, chuyển khoản, thợ Minh”"
+                            placeholder="Hoặc chạm vào đây để gõ / dùng giọng nói bàn phím: “Xe 51A 12345, Mazda CX-5, thay dầu máy, 850 nghìn, chuyển khoản, thợ Minh”"
                             class="w-full bg-slate-50 sm:bg-white rounded-2xl sm:rounded-xl border border-slate-200 px-3.5 py-2.5 text-base text-center sm:text-left text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition resize-none"></textarea>
 
                         <!-- Nút thao tác Desktop -->
@@ -213,8 +212,8 @@
                             </label>
                             <select id="fieldDichVu"
                                 class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition cursor-pointer">
-                                <option value="Bảo Trì & Sửa Chữa">🔧 Bảo Trì & Sửa Chữa</option>
-                                <option value="Đồng Sơn TM">🎨 Đồng Sơn TM</option>
+                                <option value="Bảo Trì & Sửa Chữa">Bảo Trì & Sửa Chữa</option>
+                                <option value="Đồng Sơn TM">Đồng Sơn TM</option>
                             </select>
                         </div>
                     </div>
@@ -241,9 +240,9 @@
                             </label>
                             <select id="fieldThanhToan"
                                 class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition cursor-pointer">
-                                <option value="Chưa Thanh Toán">⏳ Chưa Thanh Toán</option>
-                                <option value="Tiền Mặt">💵 Tiền Mặt</option>
-                                <option value="Chuyển Khoản">💳 Chuyển Khoản</option>
+                                <option value="Chưa Thanh Toán">Chưa Thanh Toán</option>
+                                <option value="Tiền Mặt">Tiền Mặt</option>
+                                <option value="Chuyển Khoản">Chuyển Khoản</option>
                             </select>
                         </div>
                     </div>
@@ -261,7 +260,8 @@
                             <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
                                 Ghi Chú
                             </label>
-                            <input type="text" id="fieldGhiChu" placeholder="VD: Khách hẹn 17h lấy, kiểm tra thêm gầm..."
+                            <input type="text" id="fieldGhiChu"
+                                placeholder="VD: Khách hẹn 17h lấy, kiểm tra thêm gầm..."
                                 class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
                         </div>
                     </div>
@@ -310,7 +310,8 @@
                                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
                         <span>Tải Excel</span>
-                        <span class="hidden sm:inline">(<span id="activeFilenameBadge">{{ current_filename }}</span>)</span>
+                        <span class="hidden sm:inline">(<span id="activeFilenameBadge">{{ current_filename
+                                }}</span>)</span>
                     </a>
                 </div>
             </div>
@@ -472,7 +473,7 @@
                 if (event.error === 'not-allowed') {
                     document.getElementById('voiceInput').focus();
                     showAlert(
-                        'Hãy bấm biểu tượng 🎙️ Micro trên bàn phím điện thoại để nói.',
+                        'Hãy bấm biểu tượng Micro trên bàn phím điện thoại để nói.',
                         'warning'
                     );
                 } else {
@@ -567,7 +568,7 @@
                 document.getElementById('fieldGhiChu').value = data.ghi_chu || '';
 
                 if (data.is_valid) {
-                    updateBadge('Đủ thông tin ✓', 'valid');
+                    updateBadge('Đủ thông tin', 'valid');
                     hideAlert();
 
                     const autoSave = document.getElementById('autoSaveToggle').checked;
@@ -624,9 +625,9 @@
                 let driveNote = '';
                 let alertType = 'success';
                 if (result.drive && result.drive.synced) {
-                    driveNote = ' & <b>Google Drive 🟢</b>';
+                    driveNote = ' & <b>Google Drive</b>';
                 } else if (result.drive && result.drive.error) {
-                    driveNote = `<br/><span class="text-amber-700">⚠️ Chưa lưu được lên Drive: ${result.drive.error}</span>`;
+                    driveNote = `<br/><span class="text-amber-700">Chưa lưu được lên Drive: ${result.drive.error}</span>`;
                     alertType = 'warning';
                 }
                 const giaText = result.record.bao_gia ? `: <b>${result.record.bao_gia}đ</b>` : '';
@@ -636,7 +637,7 @@
                     `Đã lưu <b>${result.record.bien_so}</b> (${result.record.hieu_xe} - ${result.record.noi_dung}${giaText}${staffText}) vào <b>${result.record.filename}</b>${driveNote}`,
                     alertType
                 );
-                updateBadge('Đã lưu ✓', 'valid');
+                updateBadge('Đã lưu', 'valid');
                 document.getElementById('voiceInput').value = '';
                 document.getElementById('fieldBienSo').value = '';
                 document.getElementById('fieldHieuXe').value = '';
@@ -675,18 +676,18 @@
 
         function getPaymentBadgeHtml(status) {
             if (status === 'Tiền Mặt') {
-                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">💵 Tiền Mặt</span>';
+                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Tiền Mặt</span>';
             } else if (status === 'Chuyển Khoản') {
-                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">💳 Chuyển Khoản</span>';
+                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Chuyển Khoản</span>';
             }
-            return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">⏳ Chưa Trả</span>';
+            return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Chưa Thanh Toán</span>';
         }
 
         function getServiceBadgeHtml(service) {
             if (service === 'Đồng Sơn TM') {
-                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">🎨 Đồng Sơn TM</span>';
+                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">Đồng Sơn TM</span>';
             }
-            return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">🔧 Bảo Trì</span>';
+            return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">Bảo Trì</span>';
         }
 
         async function loadRecords(monthKey = '') {
@@ -720,7 +721,7 @@
                 if (data.months && data.months.length > 0) {
                     sel.innerHTML = data.months.map(m => `
                         <option value="${m.month_key}" ${m.month_key === selectedMonthKey ? 'selected' : ''}>
-                            📅 ${m.label}
+                            ${m.label}
                         </option>
                     `).join('');
                 }
