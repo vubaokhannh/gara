@@ -42,6 +42,15 @@ def _check_request_pin() -> bool:
     return verify_pin(pin)
 
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """
+    Endpoint siêu nhẹ để Google Apps Script (hoặc Cron-job) ping định kỳ mỗi 10 phút,
+    giúp giữ Server trên Render Free luôn thức 24/24 (không bị ngủ đông sau 15 phút).
+    """
+    return jsonify({"status": "ok", "service": "gara-voice"}), 200
+
+
 @app.route("/")
 def index():
     current_month_file = ensure_excel_file()

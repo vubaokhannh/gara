@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 import json
-import requests
+import urllib.request
+import urllib.parse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -27,7 +28,7 @@ def _save_local_config(cfg: dict) -> None:
 
 def get_drive_webhook_url() -> str:
     """
-    Lấy URL Webhook của Google Apps Script (ưu tiên config.json nếu vừa cập nhật trên UI, sau đó tới biến môi trường).
+    Lấy URL Webhook của Google Apps Script (ưu tiên config.json nếu có, sau đó tới biến môi trường).
     """
     cfg = _load_local_config()
     local_url = (cfg.get("drive_webhook_url") or "").strip()
@@ -63,37 +64,20 @@ def verify_pin(input_pin: str) -> bool:
     return str(input_pin or "").strip() == expected
 
 
-def _post_to_apps_script(webhook_url: str, payload: dict) -> dict:
+def _call_apps_script(webhook_url: str, params: dict) -> dict:
     """
     Gửi request tới Google Apps Script Web App.
-    Lưu ý quan trọng: Google Apps Script trả về mã 302 Redirect sang script.googleusercontent.com.
-    Khi đi qua 302 Redirect, một số HTTP client biến POST thành GET làm mất body,
-    nên ta gửi kèm cả JSON body lẫn query params hoặc xử lý redirect chuẩn xác.
+    Truyền tham số trực tiếp qua Query String trên GET request để vượt qua 100% lỗi
+    302 Redirect của Google Apps Script (tránh bị mất body khi 302 chuyển POST -> GET).
     """
-    # Truyền thêm các tham số qua query string để dù bị redirect 302 -> GET thì doGet trên Apps Script vẫn xử lý được,
-    # đồng thời giữ POST JSON cho doPost.
-    record = payload.get("record") or {}
-    params = {
-        "action": payload.get("action", ""),
-        "month_key": payload.get("month_key", ""),
-        "row_id": str(payload.get("row_id", "")),
-        "thoi_gian": record.get("thoi_gian", ""),
-        "bien_so": record.get("bien_so", ""),
-        "hang_xe": record.get("hang_xe", ""),
-        "dich_vu": record.get("dich_vu", ""),
-        "gia": record.get("gia", ""),
-        "nguoi_phu_trach": record.get("nguoi_phu_trach", ""),
-    }
+    query_str = urllib.parse.urlencode(params)
+    sep = "&" if "?" in webhook_url else "?"
+    full_url = f"{webhook_url}{sep}{query_str}"
 
-    resp = requests.post(
-        webhook_url,
-        params=params,
-        json=payload,
-        timeout=15,
-        allow_redirects=True,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    req = urllib.request.Request(full_url, method="GET")
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        body = resp.read().decode("utf-8")
+        return json.loads(body)
 
 
 def sync_append_to_drive(month_key: str, record: dict) -> dict:
@@ -104,21 +88,19 @@ def sync_append_to_drive(month_key: str, record: dict) -> dict:
     if not webhook_url:
         return {"synced": False, "reason": "Chưa cấu hình DRIVE_WEBHOOK_URL"}
 
-    payload = {
+    params = {
         "action": "append",
         "month_key": month_key,
-        "record": {
-            "thoi_gian": record.get("thoi_gian", ""),
-            "bien_so": record.get("bien_so", ""),
-            "hang_xe": record.get("hang_xe", ""),
-            "dich_vu": record.get("dich_vu", ""),
-            "gia": record.get("gia", ""),
-            "nguoi_phu_trach": record.get("nguoi_phu_trach", ""),
-        },
+        "thoi_gian": record.get("thoi_gian", ""),
+        "bien_so": record.get("bien_so", ""),
+        "hang_xe": record.get("hang_xe", ""),
+        "dich_vu": record.get("dich_vu", ""),
+        "gia": record.get("gia", ""),
+        "nguoi_phu_trach": record.get("nguoi_phu_trach", ""),
     }
 
     try:
-        data = _post_to_apps_script(webhook_url, payload)
+        data = _call_apps_script(webhook_url, params)
         if data.get("success"):
             cfg = _load_local_config()
             if data.get("file_url"):
@@ -144,13 +126,13 @@ def sync_delete_from_drive(month_key: str, row_id: int) -> dict:
     if not webhook_url:
         return {"synced": False}
 
-    payload = {
+    params = {
         "action": "delete",
         "month_key": month_key,
-        "row_id": row_id,
+        "row_id": str(row_id),
     }
     try:
-        data = _post_to_apps_script(webhook_url, payload)
+        data = _call_apps_script(webhook_url, params)
         return {"synced": bool(data.get("success"))}
     except Exception:
         return {"synced": False}
@@ -165,14 +147,7 @@ def fetch_month_from_drive(month_key: str) -> dict:
         return {"success": False}
 
     try:
-        resp = requests.get(
-            webhook_url,
-            params={"action": "list", "month_key": month_key},
-            timeout=15,
-            allow_redirects=True,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        data = _call_apps_script(webhook_url, {"action": "list", "month_key": month_key})
         if data.get("success"):
             cfg = _load_local_config()
             if data.get("file_url"):

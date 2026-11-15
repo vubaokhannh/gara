@@ -15,6 +15,9 @@
 const FOLDER_NAME = "Gara_Data";
 const HEADERS = ["Thời gian", "Biển số", "Hãng xe", "Dịch vụ", "Giá", "Người phụ trách"];
 
+// Điền link Render của bạn vào đây (VD: "https://gara-xxxx.onrender.com") để tự động giữ Server thức 24/24
+const RENDER_APP_URL = "https://gara.onrender.com";
+
 function getOrCreateFolder() {
   const folders = DriveApp.getFoldersByName(FOLDER_NAME);
   if (folders.hasNext()) {
@@ -226,3 +229,43 @@ function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/**
+ * CHỐNG NGỦ ĐÔNG TRÊN RENDER FREE (KEEP-ALIVE 24/24):
+ * Hàm này sẽ gọi nhẹ vào cổng /health trên Render mỗi 10 phút.
+ *
+ * CÁCH BẬT TỰ ĐỘNG (CHỈ CẦN CHẠY 1 LẦN DUY NHẤT):
+ * 1. Sửa lại hằng số RENDER_APP_URL ở dòng 19 thành đúng đường link Render của bạn.
+ * 2. Trên thanh công cụ Google Apps Script (cạnh nút "Chạy / Run"), chọn hàm "setupKeepAliveTrigger" trong menu thả xuống.
+ * 3. Bấm nút "Chạy" (Run) -> Google sẽ tự động tạo bộ hẹn giờ chạy hàm keepRenderAwake mỗi 10 phút 1 lần mãi mãi!
+ */
+function keepRenderAwake() {
+  const baseUrl = (RENDER_APP_URL || "").trim().replace(/\/+$/, "");
+  if (!baseUrl) return;
+  try {
+    const res = UrlFetchApp.fetch(baseUrl + "/health", {
+      method: "get",
+      muteHttpExceptions: true
+    });
+    Logger.log("Ping /health status: " + res.getResponseCode());
+  } catch (err) {
+    Logger.log("Ping error: " + err.toString());
+  }
+}
+
+function setupKeepAliveTrigger() {
+  // Xóa các trigger cũ trùng tên (nếu có) để tránh tạo trùng lặp
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "keepRenderAwake") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  // Tạo bộ hẹn giờ tự động gọi keepRenderAwake mỗi 10 phút
+  ScriptApp.newTrigger("keepRenderAwake")
+    .timeBased()
+    .everyMinutes(10)
+    .create();
+  Logger.log("Đã bật chế độ giữ Server Render thức 24/24 (Ping mỗi 10 phút)!");
+}
+
