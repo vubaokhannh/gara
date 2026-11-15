@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Gara Voice — Nhập Liệu Giọng Nói</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Be Vietnam Pro"', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.96);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+            }
+
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 22px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                transform: scale(0.96);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .recording-active {
+            animation: pulse-ring 1.4s infinite;
+            background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+        }
+
+        .license-plate {
+            letter-spacing: 0.04em;
+        }
+
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+
+<body class="bg-[#F8FAFC] text-slate-800 min-h-screen pb-10 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- Thanh điều hướng -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+                <div
+                    class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/20 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-lg font-bold text-slate-900 leading-tight">Gara Voice</h1>
+
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Địa chỉ IP LAN (chỉ hiện trên Desktop) -->
+                <div class="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full text-xs">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span class="text-slate-500">Điện thoại:</span>
+                    <span class="font-mono font-semibold text-slate-800 select-all">{{ lan_url }}</span>
+                </div>
+
+                <!-- Nút mở Google Drive -->
+                <a id="btnOpenDriveHeader" href="#" target="_blank" rel="noopener"
+                    class="hidden items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-full text-xs font-semibold transition">
+                    <span>🟢</span>
+                    <span class="hidden sm:inline">Mở Google Drive</span>
+                    <span class="sm:hidden">Drive</span>
+                </a>
+
+                <!-- Nút Cài đặt Drive & PIN -->
+                <button type="button" onclick="openSettingsModal()"
+                    class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/80 active:bg-slate-200 px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 transition">
+                    <span id="driveDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                    <span>Drive & PIN</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
+
+        <!-- CARD 1: THU ÂM & BÓC TÁCH DỮ LIỆU -->
+        <section class="bg-white rounded-3xl sm:rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+            <div class="p-5 sm:p-6">
+                <!-- Thanh trạng thái & Tự động lưu -->
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span
+                            class="hidden sm:inline-block text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
+                            Nhập giọng nói
+                        </span>
+                        <span id="validationBadge"
+                            class="text-xs px-2.5 py-1 rounded-full sm:rounded-md bg-slate-100 text-slate-600 font-semibold">
+                            Sẵn sàng
+                        </span>
+                    </div>
+
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="autoSaveToggle" checked
+                            class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" />
+                        <span class="text-xs font-medium text-slate-600">Tự động lưu khi đủ thông tin</span>
+                    </label>
+                </div>
+
+                <!-- GIAO DIỆN MOBILE (< 640px): NÚT MIC TRÒN LỚN Ở CHÍNH GIỮA -->
+                <div class="sm:hidden py-3 flex flex-col items-center justify-center text-center">
+                    <button id="btnMicMobile" type="button" onclick="toggleSpeechRecognition()"
+                        class="w-28 h-28 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 active:scale-95 text-white flex flex-col items-center justify-center shadow-xl shadow-blue-600/30 transition-all mx-auto">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                        </svg>
+                    </button>
+                    <p id="micStatusMobile" class="text-sm font-bold text-slate-800 mt-4">
+                        Chạm vào Mic để nói
+                    </p>
+                    <p class="text-xs text-slate-400 mt-1">
+                        “Xe 51A 12345, Mazda CX5, bảo dưỡng định kỳ, 1 triệu 2, phụ trách Minh”
+                    </p>
+                </div>
+
+                <!-- GIAO DIỆN DESKTOP (>= 640px): GIỮ NGUYÊN BỐ CỤC NGANG -->
+                <div
+                    class="bg-transparent sm:bg-slate-50/80 sm:border sm:border-slate-200/90 rounded-2xl sm:p-4 mt-2 sm:mt-0 flex flex-col sm:flex-row items-center gap-4">
+                    <!-- Nút Mic trên Desktop -->
+                    <div class="hidden sm:flex flex-col items-center shrink-0">
+                        <button id="btnMicDesktop" type="button" onclick="toggleSpeechRecognition()"
+                            class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white flex items-center justify-center shadow-md shadow-blue-600/25 transition-all"
+                            title="Bấm để nói">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                            </svg>
+                        </button>
+                        <span id="micStatusDesktop" class="text-[11px] font-medium text-slate-500 mt-1.5">
+                            Bấm để nói
+                        </span>
+                    </div>
+
+                    <!-- Ô nhập giọng nói (Dùng chung cho cả Mobile & Desktop) -->
+                    <div class="flex-1 w-full">
+                        <textarea id="voiceInput" rows="2"
+                            placeholder="Hoặc chạm vào đây dùng 🎙️ bàn phím: “Xe 51A 12345, Mazda CX5, thay dầu máy, 850 nghìn, phụ trách Minh”"
+                            class="w-full bg-slate-50 sm:bg-white rounded-2xl sm:rounded-xl border border-slate-200 px-3.5 py-2.5 text-base text-center sm:text-left text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition resize-none"></textarea>
+
+                        <!-- Nút phụ (Chỉ hiện trên Desktop) -->
+                        <div class="hidden sm:flex items-center justify-end gap-1.5 mt-2">
+                            <button type="button" onclick="clearVoiceInput()"
+                                class="text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg hover:bg-slate-200/60 transition">
+                                Làm trống
+                            </button>
+                            <button type="button" onclick="analyzeText()"
+                                class="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100/80 px-3 py-1 rounded-lg transition">
+                                Tách dữ liệu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thông báo trạng thái -->
+                <div id="alertBox" class="hidden mt-3.5 px-4 py-2.5 rounded-xl text-xs font-medium"></div>
+
+                <!-- 6 Ô kết quả chuẩn (Thời gian, Biển số, Hãng xe, Dịch vụ, Giá (tùy chọn), Người phụ trách) -->
+                <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 sm:gap-3 mt-4">
+                    <div class="hidden sm:block col-span-1">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Thời
+                            gian</label>
+                        <input type="text" id="fieldThoiGian" placeholder="15/11/2026"
+                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Biển
+                            số *</label>
+                        <input type="text" id="fieldBienSo" autocapitalize="characters" placeholder="51A-12345"
+                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-bold text-blue-700 uppercase license-plate focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Hãng
+                            xe *</label>
+                        <input type="text" id="fieldHangXe" placeholder="Honda"
+                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Dịch
+                            vụ *</label>
+                        <input type="text" id="fieldDichVu" placeholder="Rửa xe"
+                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Giá
+                            (Tùy chọn)</label>
+                        <input type="text" id="fieldGia" inputmode="numeric" placeholder="Để trống được"
+                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-bold text-emerald-600 placeholder:font-normal focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                    </div>
+                    <div class="col-span-1">
+                        <label
+                            class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Người
+                            phụ trách</label>
+                        <input type="text" id="fieldNguoiPhuTrach" placeholder="VD: Minh"
+                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chân Card: Nút Lưu -->
+            <div
+                class="bg-slate-50/80 border-t border-slate-100 px-5 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span class="hidden sm:inline text-xs text-slate-500">
+                    Tự động lưu vào file Excel theo tháng & đồng bộ Google Drive
+                </span>
+                <button type="button" onclick="saveToExcel()"
+                    class="w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-2xl sm:rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-sm shadow-sm shadow-blue-600/20 flex items-center justify-center gap-2 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    Lưu vào Excel
+                </button>
+            </div>
+        </section>
+
+        <!-- CARD 2: DANH SÁCH XE & TẢI FILE THEO THÁNG (Đã bỏ thống kê doanh thu) -->
+        <section class="bg-white rounded-3xl sm:rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+            <!-- Header bảng -->
+            <div
+                class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">Số xe trong tháng</div>
+                    <div class="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+                        <span id="recordCount">0</span> <span class="text-xs font-normal text-slate-500">lượt xe</span>
+                    </div>
+                </div>
+
+                <!-- Chọn tháng & Xuất Excel -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="monthSelector" onchange="onMonthChange()"
+                        class="flex-1 sm:flex-none rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 px-3.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition cursor-pointer"></select>
+
+                    <a id="btnDownloadExcel" href="/api/download-excel"
+                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm shadow-emerald-600/20 inline-flex items-center gap-1.5 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        <span>Tải Excel</span>
+                        <span class="hidden sm:inline">(<span id="activeFilenameBadge">{{ current_filename
+                                }}</span>)</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Danh sách gọn trên Mobile -->
+            <div id="mobileRecordList" class="sm:hidden divide-y divide-slate-100">
+                <div class="py-8 text-center text-slate-400 text-xs">
+                    Chưa có dữ liệu trong tháng này.
+                </div>
+            </div>
+
+            <!-- Bảng dữ liệu chuẩn trên Desktop -->
+            <div class="hidden sm:block overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                            <th class="py-3 px-5">Thời gian</th>
+                            <th class="py-3 px-4">Biển số</th>
+                            <th class="py-3 px-4">Hãng xe</th>
+                            <th class="py-3 px-4">Dịch vụ</th>
+                            <th class="py-3 px-4 text-right">Giá</th>
+                            <th class="py-3 px-4">Người phụ trách</th>
+                            <th class="py-3 px-4 text-center w-14"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="excelTableBody" class="divide-y divide-slate-100 text-sm">
+                        <tr>
+                            <td colspan="7" class="py-10 text-center text-slate-400 text-xs">
+                                Chưa có dữ liệu trong tháng này.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MÀN HÌNH KHÓA PIN (CHẶN NGƯỜI LẠ KHI PUBLIC LINK) -->
+    <div id="pinGateOverlay"
+        class="hidden fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-xs w-full p-6 text-center shadow-2xl space-y-4">
+            <div
+                class="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-600/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-slate-900">Nhập Mã PIN Gara</h2>
+                <p class="text-xs text-slate-500 mt-1">Chỉ nhân viên có mã PIN mới truy cập được</p>
+            </div>
+
+            <input type="password" id="pinGateInput" inputmode="numeric" placeholder="••••"
+                onkeydown="if(event.key==='Enter') unlockWithPin()"
+                class="w-full text-center rounded-2xl bg-slate-50 border border-slate-300 px-4 py-3 text-xl font-bold tracking-[0.4em] focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p id="pinGateError" class="hidden text-xs font-semibold text-red-600">Mã PIN không đúng!</p>
+
+            <button type="button" onclick="unlockWithPin()"
+                class="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold text-sm shadow-md shadow-blue-600/20 transition">
+                Mở Khóa
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL CÀI ĐẶT MÃ PIN & GOOGLE DRIVE -->
+    <div id="settingsModal"
+        class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold text-slate-900">Cài Đặt Mã PIN & Google Drive</h3>
+                <button type="button" onclick="closeSettingsModal()"
+                    class="text-slate-400 hover:text-slate-600 p-1">✕</button>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">
+                    🔑 Mã PIN đang lưu trên thiết bị này
+                </label>
+                <input type="password" id="inputAppPin" inputmode="numeric" placeholder="Nhập mã PIN"
+                    class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-base font-bold tracking-widest focus:outline-none focus:border-blue-500" />
+            </div>
+
+            <div class="pt-2 border-t border-slate-100">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">
+                    🟢 Google Apps Script Webhook URL
+                </label>
+                <input type="url" id="inputDriveWebhook" placeholder="https://script.google.com/macros/s/.../exec"
+                    class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono focus:outline-none focus:border-blue-500" />
+                <div id="driveLinksInfo" class="hidden mt-2 flex items-center gap-3 text-xs">
+                    <a id="modalFolderLink" href="#" target="_blank"
+                        class="text-blue-600 hover:underline font-medium">📂 Mở thư mục Gara_Data</a>
+                    <a id="modalFileLink" href="#" target="_blank"
+                        class="text-emerald-600 hover:underline font-medium">📄 Mở file tháng này</a>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button type="button" onclick="closeSettingsModal()"
+                    class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">
+                    Đóng
+                </button>
+                <button type="button" onclick="saveSettings()"
+                    class="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold">
+                    Lưu cài đặt
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let recognition = null;
+        let isRecording = false;
+        let debounceTimer = null;
+        let selectedMonthKey = '';
+
+        function getSavedPin() {
+            return localStorage.getItem('gara_app_pin') || '';
+        }
+
+        function showPinGate(showError = false) {
+            document.getElementById('pinGateOverlay').classList.remove('hidden');
+            const err = document.getElementById('pinGateError');
+            if (showError) {
+                err.classList.remove('hidden');
+            } else {
+                err.classList.add('hidden');
+            }
+            setTimeout(() => document.getElementById('pinGateInput').focus(), 100);
+        }
+
+        async function unlockWithPin() {
+            const pin = document.getElementById('pinGateInput').value.trim();
+            if (!pin) return;
+            try {
+                const res = await fetch('/api/verify-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin })
+                });
+                if (!res.ok) {
+                    showPinGate(true);
+                    return;
+                }
+                localStorage.setItem('gara_app_pin', pin);
+                document.getElementById('pinGateOverlay').classList.add('hidden');
+                await loadRecords(selectedMonthKey);
+            } catch (err) {
+                showPinGate(true);
+            }
+        }
+
+        function setTodayDefault() {
+            const now = new Date();
+            const dd = String(now.getDate()).padStart(2, '0');
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const yyyy = now.getFullYear();
+            document.getElementById('fieldThoiGian').value = `${dd}/${mm}/${yyyy}`;
+        }
+
+        function openSettingsModal() {
+            document.getElementById('inputAppPin').value = getSavedPin();
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        async function saveSettings() {
+            const pin = document.getElementById('inputAppPin').value.trim() || '1234';
+            const webhookUrl = document.getElementById('inputDriveWebhook').value.trim();
+            localStorage.setItem('gara_app_pin', pin);
+
+            try {
+                const res = await fetch('/api/drive-config?month=' + encodeURIComponent(selectedMonthKey), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-App-Pin': pin
+                    },
+                    body: JSON.stringify({ webhook_url: webhookUrl, pin })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showAlert((data.errors || ['Mã PIN không đúng']).join(' • '), 'error');
+                    return;
+                }
+                closeSettingsModal();
+                showAlert('Đã lưu cài đặt!', 'success');
+                await loadRecords(selectedMonthKey);
+            } catch (err) {
+                showAlert('Lỗi khi lưu cài đặt.', 'error');
+            }
+        }
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('micStatusMobile').innerText = 'Chạm ô bên dưới để dùng Mic bàn phím';
+                document.getElementById('micStatusDesktop').innerText = 'Dùng Mic bàn phím';
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'vi-VN';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+
+            recognition.onstart = () => {
+                isRecording = true;
+                document.getElementById('btnMicMobile').classList.add('recording-active');
+                document.getElementById('btnMicDesktop').classList.add('recording-active');
+                document.getElementById('micStatusMobile').innerText = 'Đang nghe... Hãy nói';
+                document.getElementById('micStatusMobile').classList.add('text-red-600');
+                document.getElementById('micStatusDesktop').innerText = 'Đang nghe...';
+                document.getElementById('micStatusDesktop').classList.add('text-red-600', 'font-semibold');
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                document.getElementById('voiceInput').value = transcript;
+            };
+
+            recognition.onerror = (event) => {
+                stopRecordingUI();
+                if (event.error === 'not-allowed') {
+                    document.getElementById('voiceInput').focus();
+                    showAlert(
+                        'Hãy bấm biểu tượng 🎙️ Micro trên bàn phím điện thoại để nói.',
+                        'warning'
+                    );
+                } else {
+                    showAlert('Không nhận diện được giọng nói (' + event.error + ').', 'error');
+                }
+            };
+
+            recognition.onend = () => {
+                stopRecordingUI();
+                const currentText = document.getElementById('voiceInput').value.trim();
+                if (currentText) {
+                    analyzeText();
+                }
+            };
+        }
+
+        function stopRecordingUI() {
+            isRecording = false;
+            document.getElementById('btnMicMobile').classList.remove('recording-active');
+            document.getElementById('btnMicDesktop').classList.remove('recording-active');
+            document.getElementById('micStatusMobile').innerText = 'Chạm vào Mic để nói';
+            document.getElementById('micStatusMobile').classList.remove('text-red-600');
+            document.getElementById('micStatusDesktop').innerText = 'Bấm để nói';
+            document.getElementById('micStatusDesktop').classList.remove('text-red-600', 'font-semibold');
+        }
+
+        function toggleSpeechRecognition() {
+            if (!recognition) {
+                initSpeechRecognition();
+                if (!recognition) {
+                    document.getElementById('voiceInput').focus();
+                    return;
+                }
+            }
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    recognition.stop();
+                }
+            }
+        }
+
+        document.getElementById('voiceInput').addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const text = document.getElementById('voiceInput').value.trim();
+                if (text.length > 5) {
+                    analyzeText(false);
+                }
+            }, 450);
+        });
+
+        function fillSample(sampleText) {
+            document.getElementById('voiceInput').value = sampleText;
+            analyzeText();
+        }
+
+        function clearVoiceInput() {
+            document.getElementById('voiceInput').value = '';
+            document.getElementById('fieldBienSo').value = '';
+            document.getElementById('fieldHangXe').value = '';
+            document.getElementById('fieldDichVu').value = '';
+            document.getElementById('fieldGia').value = '';
+            document.getElementById('fieldNguoiPhuTrach').value = '';
+            setTodayDefault();
+            hideAlert();
+            updateBadge('Sẵn sàng', 'neutral');
+        }
+
+        async function analyzeText(allowAutoSave = true) {
+            const text = document.getElementById('voiceInput').value.trim();
+            if (!text) return;
+
+            try {
+                const res = await fetch('/api/parse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+
+                document.getElementById('fieldThoiGian').value = data.thoi_gian || '';
+                document.getElementById('fieldBienSo').value = data.bien_so || '';
+                document.getElementById('fieldHangXe').value = data.hang_xe || '';
+                document.getElementById('fieldDichVu').value = data.dich_vu || '';
+                document.getElementById('fieldGia').value = data.gia_hien_thi || '';
+                document.getElementById('fieldNguoiPhuTrach').value = data.nguoi_phu_trach || '';
+
+                if (data.is_valid) {
+                    updateBadge('Đủ thông tin ✓', 'valid');
+                    hideAlert();
+
+                    const autoSave = document.getElementById('autoSaveToggle').checked;
+                    if (allowAutoSave && autoSave) {
+                        await saveToExcel();
+                    }
+                } else {
+                    updateBadge('Thiếu thông tin', 'invalid');
+                    showAlert(data.errors.join(' • '), 'warning');
+                }
+            } catch (err) {
+                showAlert('Không thể kết nối tới máy chủ.', 'error');
+            }
+        }
+
+        async function saveToExcel() {
+            if (!document.getElementById('fieldThoiGian').value) {
+                setTodayDefault();
+            }
+            const payload = {
+                thoi_gian: document.getElementById('fieldThoiGian').value.trim(),
+                bien_so: document.getElementById('fieldBienSo').value.trim(),
+                hang_xe: document.getElementById('fieldHangXe').value.trim(),
+                dich_vu: document.getElementById('fieldDichVu').value.trim(),
+                gia: document.getElementById('fieldGia').value.trim(),
+                nguoi_phu_trach: document.getElementById('fieldNguoiPhuTrach').value.trim(),
+                pin: getSavedPin()
+            };
+
+            try {
+                const res = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-App-Pin': getSavedPin()
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (res.status === 401 || result.require_pin) {
+                    openSettingsModal();
+                    showAlert('Mã PIN chưa đúng.', 'error');
+                    return;
+                }
+
+                if (!res.ok || !result.success) {
+                    const errMsg = (result.errors || ['Dữ liệu chưa hợp lệ']).join(' • ');
+                    showAlert(errMsg, 'error');
+                    updateBadge('Chưa hợp lệ', 'invalid');
+                    return;
+                }
+
+                const driveNote = (result.drive && result.drive.synced) ? ' & Google Drive 🟢' : '';
+                const giaText = result.record.gia ? `: <b>${result.record.gia}đ</b>` : '';
+                const staffText = result.record.nguoi_phu_trach ? ` • Phụ trách: <b>${result.record.nguoi_phu_trach}</b>` : '';
+
+                showAlert(
+                    `Đã lưu <b>${result.record.bien_so}</b> (${result.record.hang_xe} - ${result.record.dich_vu}${giaText}${staffText}) vào <b>${result.record.filename}</b>${driveNote}`,
+                    'success'
+                );
+                updateBadge('Đã lưu ✓', 'valid');
+                document.getElementById('voiceInput').value = '';
+                document.getElementById('fieldBienSo').value = '';
+                document.getElementById('fieldHangXe').value = '';
+                document.getElementById('fieldDichVu').value = '';
+                document.getElementById('fieldGia').value = '';
+                document.getElementById('fieldNguoiPhuTrach').value = '';
+                setTodayDefault();
+
+                selectedMonthKey = result.record.month_key || selectedMonthKey;
+                await loadRecords(selectedMonthKey);
+            } catch (err) {
+                showAlert('Lỗi khi lưu vào file Excel.', 'error');
+            }
+        }
+
+        function onMonthChange() {
+            const sel = document.getElementById('monthSelector');
+            selectedMonthKey = sel.value;
+            loadRecords(selectedMonthKey);
+        }
+
+        function updateDriveUI(drive) {
+            if (!drive) return;
+            const dot = document.getElementById('driveDot');
+            const headerBtn = document.getElementById('btnOpenDriveHeader');
+            const webhookInput = document.getElementById('inputDriveWebhook');
+            const linksInfo = document.getElementById('driveLinksInfo');
+
+            if (drive.webhook_url && !webhookInput.value) {
+                webhookInput.value = drive.webhook_url;
+            }
+
+            if (drive.configured) {
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                const targetUrl = drive.file_url || drive.folder_url;
+                if (targetUrl) {
+                    headerBtn.href = targetUrl;
+                    headerBtn.classList.remove('hidden');
+                    headerBtn.classList.add('inline-flex');
+                }
+                if (drive.folder_url || drive.file_url) {
+                    linksInfo.classList.remove('hidden');
+                    if (drive.folder_url) document.getElementById('modalFolderLink').href = drive.folder_url;
+                    if (drive.file_url) document.getElementById('modalFileLink').href = drive.file_url;
+                }
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                headerBtn.classList.add('hidden');
+            }
+        }
+
+        async function loadRecords(monthKey = '') {
+            const pin = getSavedPin();
+            if (!pin) {
+                showPinGate(false);
+                return;
+            }
+
+            const targetMonth = monthKey || selectedMonthKey || '';
+            const query = targetMonth ? `?month=${encodeURIComponent(targetMonth)}` : '';
+
+            try {
+                const res = await fetch(`/api/records${query}`, {
+                    headers: { 'X-App-Pin': pin }
+                });
+                if (res.status === 401) {
+                    showPinGate(true);
+                    return;
+                }
+                const data = await res.json();
+
+                selectedMonthKey = data.month_key;
+                document.getElementById('recordCount').innerText = data.count || 0;
+                document.getElementById('activeFilenameBadge').innerText = data.filename || '';
+                document.getElementById('btnDownloadExcel').href = `/api/download-excel?month=${encodeURIComponent(selectedMonthKey)}&pin=${encodeURIComponent(pin)}`;
+
+                updateDriveUI(data.drive);
+
+                const sel = document.getElementById('monthSelector');
+                if (data.months && data.months.length > 0) {
+                    sel.innerHTML = data.months.map(m => `
+                        <option value="${m.month_key}" ${m.month_key === selectedMonthKey ? 'selected' : ''}>
+                            📅 ${m.label}
+                        </option>
+                    `).join('');
+                }
+
+                const tbody = document.getElementById('excelTableBody');
+                const mobileList = document.getElementById('mobileRecordList');
+
+                if (!data.records || data.records.length === 0) {
+                    const emptyHtml = `Chưa có dữ liệu xe trong <b>${data.filename}</b>`;
+                    tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-xs">${emptyHtml}</td></tr>`;
+                    mobileList.innerHTML = `<div class="py-8 text-center text-slate-400 text-xs">${emptyHtml}</div>`;
+                    return;
+                }
+
+                // Danh sách gọn trên Mobile
+                mobileList.innerHTML = data.records.map(r => `
+                    <div class="p-3.5 flex items-center justify-between gap-3 active:bg-slate-50">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2 py-0.5 rounded border border-blue-200/70 license-plate">
+                                    ${r.bien_so}
+                                </span>
+                                <span class="font-semibold text-sm text-slate-800 truncate">${r.hang_xe}</span>
+                                <span class="text-[11px] text-slate-400 ml-auto">${r.thoi_gian}</span>
+                            </div>
+                            <div class="flex items-center justify-between mt-1 gap-2">
+                                <span class="text-xs text-slate-500 truncate">
+                                    ${r.dich_vu}${r.nguoi_phu_trach ? ` • 👤 ${r.nguoi_phu_trach}` : ''}
+                                </span>
+                                <span class="text-xs font-bold text-emerald-600 shrink-0">${r.gia ? r.gia + 'đ' : '—'}</span>
+                            </div>
+                        </div>
+                        <button
+                            onclick="deleteRecord(${r.row_id}, '${r.month_key}')"
+                            class="w-7 h-7 rounded-lg text-slate-300 active:text-red-600 flex items-center justify-center shrink-0"
+                            title="Xóa"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                `).join('');
+
+                // Bảng đầy đủ trên Desktop
+                tbody.innerHTML = data.records.map(r => `
+                    <tr class="hover:bg-slate-50/80 transition group">
+                        <td class="py-3 px-5 text-slate-500 text-xs font-medium">${r.thoi_gian}</td>
+                        <td class="py-3 px-4">
+                            <span class="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-md border border-blue-200/60 license-plate">
+                                ${r.bien_so}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-medium text-slate-800">${r.hang_xe}</td>
+                        <td class="py-3 px-4 text-slate-600">${r.dich_vu}</td>
+                        <td class="py-3 px-4 text-right font-bold text-emerald-600">${r.gia || '<span class="text-slate-300 font-normal">—</span>'}</td>
+                        <td class="py-3 px-4 text-slate-700 font-medium">${r.nguoi_phu_trach || '<span class="text-slate-300 font-normal">—</span>'}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button
+                                onclick="deleteRecord(${r.row_id}, '${r.month_key}')"
+                                class="text-slate-300 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition"
+                                title="Xóa dòng này"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteRecord(rowId, monthKey) {
+            if (!confirm('Xóa dòng dữ liệu này khỏi file Excel?')) return;
+            try {
+                const res = await fetch(`/api/records/${rowId}?month=${encodeURIComponent(monthKey || selectedMonthKey)}`, {
+                    method: 'DELETE',
+                    headers: { 'X-App-Pin': getSavedPin() }
+                });
+                if (res.status === 401) {
+                    openSettingsModal();
+                    return;
+                }
+                if (res.ok) {
+                    await loadRecords(selectedMonthKey);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updateBadge(text, status) {
+            const badge = document.getElementById('validationBadge');
+            badge.innerText = text;
+            badge.className = 'text-xs px-2.5 py-1 rounded-full sm:rounded-md font-semibold ';
+            if (status === 'valid') {
+                badge.className += 'bg-emerald-50 text-emerald-700';
+            } else if (status === 'invalid') {
+                badge.className += 'bg-amber-50 text-amber-700';
+            } else {
+                badge.className += 'bg-slate-100 text-slate-600';
+            }
+        }
+
+        function showAlert(htmlMsg, type) {
+            const box = document.getElementById('alertBox');
+            box.innerHTML = htmlMsg;
+            box.className = 'mt-3.5 px-4 py-2.5 rounded-xl text-xs font-medium border ';
+            if (type === 'success') {
+                box.className += 'bg-emerald-50/90 text-emerald-800 border-emerald-200';
+            } else if (type === 'warning') {
+                box.className += 'bg-amber-50/90 text-amber-800 border-amber-200';
+            } else {
+                box.className += 'bg-red-50/90 text-red-800 border-red-200';
+            }
+        }
+
+        function hideAlert() {
+            document.getElementById('alertBox').className = 'hidden';
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTodayDefault();
+            initSpeechRecognition();
+            loadRecords();
+        });
+    </script>
+</body>
+
+</html>
