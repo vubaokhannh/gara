@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
-import urllib.request
-import urllib.parse
+import requests
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -28,13 +27,13 @@ def _save_local_config(cfg: dict) -> None:
 
 def get_drive_webhook_url() -> str:
     """
-    Lấy URL Webhook của Google Apps Script (ưu tiên biến môi trường, sau đó tới config.json).
+    Lấy URL Webhook của Google Apps Script (ưu tiên config.json nếu vừa cập nhật trên UI, sau đó tới biến môi trường).
     """
-    env_url = os.environ.get("DRIVE_WEBHOOK_URL", "").strip()
-    if env_url:
-        return env_url
     cfg = _load_local_config()
-    return (cfg.get("drive_webhook_url") or "").strip()
+    local_url = (cfg.get("drive_webhook_url") or "").strip()
+    if local_url:
+        return local_url
+    return os.environ.get("DRIVE_WEBHOOK_URL", "").strip()
 
 
 def set_drive_webhook_url(url: str) -> str:
@@ -64,6 +63,39 @@ def verify_pin(input_pin: str) -> bool:
     return str(input_pin or "").strip() == expected
 
 
+def _post_to_apps_script(webhook_url: str, payload: dict) -> dict:
+    """
+    Gửi request tới Google Apps Script Web App.
+    Lưu ý quan trọng: Google Apps Script trả về mã 302 Redirect sang script.googleusercontent.com.
+    Khi đi qua 302 Redirect, một số HTTP client biến POST thành GET làm mất body,
+    nên ta gửi kèm cả JSON body lẫn query params hoặc xử lý redirect chuẩn xác.
+    """
+    # Truyền thêm các tham số qua query string để dù bị redirect 302 -> GET thì doGet trên Apps Script vẫn xử lý được,
+    # đồng thời giữ POST JSON cho doPost.
+    record = payload.get("record") or {}
+    params = {
+        "action": payload.get("action", ""),
+        "month_key": payload.get("month_key", ""),
+        "row_id": str(payload.get("row_id", "")),
+        "thoi_gian": record.get("thoi_gian", ""),
+        "bien_so": record.get("bien_so", ""),
+        "hang_xe": record.get("hang_xe", ""),
+        "dich_vu": record.get("dich_vu", ""),
+        "gia": record.get("gia", ""),
+        "nguoi_phu_trach": record.get("nguoi_phu_trach", ""),
+    }
+
+    resp = requests.post(
+        webhook_url,
+        params=params,
+        json=payload,
+        timeout=15,
+        allow_redirects=True,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def sync_append_to_drive(month_key: str, record: dict) -> dict:
     """
     Gửi bản ghi mới sang Google Drive (Apps Script) để tự động tạo/ghi vào file tháng tương ứng.
@@ -86,30 +118,22 @@ def sync_append_to_drive(month_key: str, record: dict) -> dict:
     }
 
     try:
-        req = urllib.request.Request(
-            webhook_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            body = resp.read().decode("utf-8")
-            data = json.loads(body)
-            if data.get("success"):
-                cfg = _load_local_config()
-                if data.get("file_url"):
-                    file_urls = cfg.get("drive_file_urls") or {}
-                    file_urls[month_key] = data["file_url"]
-                    cfg["drive_file_urls"] = file_urls
-                if data.get("folder_url"):
-                    cfg["drive_folder_url"] = data["folder_url"]
-                _save_local_config(cfg)
-                return {
-                    "synced": True,
-                    "file_url": data.get("file_url", ""),
-                    "folder_url": data.get("folder_url", ""),
-                }
-            return {"synced": False, "error": data.get("error", "Unknown error")}
+        data = _post_to_apps_script(webhook_url, payload)
+        if data.get("success"):
+            cfg = _load_local_config()
+            if data.get("file_url"):
+                file_urls = cfg.get("drive_file_urls") or {}
+                file_urls[month_key] = data["file_url"]
+                cfg["drive_file_urls"] = file_urls
+            if data.get("folder_url"):
+                cfg["drive_folder_url"] = data["folder_url"]
+            _save_local_config(cfg)
+            return {
+                "synced": True,
+                "file_url": data.get("file_url", ""),
+                "folder_url": data.get("folder_url", ""),
+            }
+        return {"synced": False, "error": data.get("error", "Unknown error")}
     except Exception as e:
         return {"synced": False, "error": str(e)}
 
@@ -126,45 +150,39 @@ def sync_delete_from_drive(month_key: str, row_id: int) -> dict:
         "row_id": row_id,
     }
     try:
-        req = urllib.request.Request(
-            webhook_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            body = resp.read().decode("utf-8")
-            data = json.loads(body)
-            return {"synced": bool(data.get("success"))}
+        data = _post_to_apps_script(webhook_url, payload)
+        return {"synced": bool(data.get("success"))}
     except Exception:
         return {"synced": False}
 
 
 def fetch_month_from_drive(month_key: str) -> dict:
     """
-    Kéo dữ liệu của 1 tháng từ Google Drive về Server (dùng để đồng bộ/khôi phục khi Cloud Server khởi động lại).
+    Kéo dữ liệu của 1 tháng từ Google Drive về Server.
     """
     webhook_url = get_drive_webhook_url()
     if not webhook_url:
         return {"success": False}
 
-    query = urllib.parse.urlencode({"action": "list", "month_key": month_key})
-    url = f"{webhook_url}?{query}"
     try:
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            body = resp.read().decode("utf-8")
-            data = json.loads(body)
-            if data.get("success"):
-                cfg = _load_local_config()
-                if data.get("file_url"):
-                    file_urls = cfg.get("drive_file_urls") or {}
-                    file_urls[month_key] = data["file_url"]
-                    cfg["drive_file_urls"] = file_urls
-                if data.get("folder_url"):
-                    cfg["drive_folder_url"] = data["folder_url"]
-                _save_local_config(cfg)
-            return data
+        resp = requests.get(
+            webhook_url,
+            params={"action": "list", "month_key": month_key},
+            timeout=15,
+            allow_redirects=True,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("success"):
+            cfg = _load_local_config()
+            if data.get("file_url"):
+                file_urls = cfg.get("drive_file_urls") or {}
+                file_urls[month_key] = data["file_url"]
+                cfg["drive_file_urls"] = file_urls
+            if data.get("folder_url"):
+                cfg["drive_folder_url"] = data["folder_url"]
+            _save_local_config(cfg)
+        return data
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -177,4 +195,3 @@ def get_saved_drive_links(month_key: str) -> dict:
         "file_url": file_urls.get(month_key, ""),
         "folder_url": cfg.get("drive_folder_url", ""),
     }
-

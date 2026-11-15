@@ -657,13 +657,22 @@
                     return;
                 }
 
-                const driveNote = (result.drive && result.drive.synced) ? ' & Google Drive 🟢' : '';
+                let driveNote = '';
+                let alertType = 'success';
+                if (result.drive && result.drive.synced) {
+                    driveNote = ' & <b>Google Drive 🟢</b>';
+                } else if (result.drive && result.drive.error) {
+                    driveNote = `<br/><span class="text-amber-700">⚠️ Chưa lưu được lên Drive: ${result.drive.error}</span>`;
+                    alertType = 'warning';
+                } else if (result.drive && result.drive.reason) {
+                    driveNote = `<br/><span class="text-amber-700">⚠️ Chưa gắn link Google Drive (Bấm nút <b>Drive & PIN</b> ở góc phải trên để dán link).</span>`;
+                }
                 const giaText = result.record.gia ? `: <b>${result.record.gia}đ</b>` : '';
                 const staffText = result.record.nguoi_phu_trach ? ` • Phụ trách: <b>${result.record.nguoi_phu_trach}</b>` : '';
 
                 showAlert(
                     `Đã lưu <b>${result.record.bien_so}</b> (${result.record.hang_xe} - ${result.record.dich_vu}${giaText}${staffText}) vào <b>${result.record.filename}</b>${driveNote}`,
-                    'success'
+                    alertType
                 );
                 updateBadge('Đã lưu ✓', 'valid');
                 document.getElementById('voiceInput').value = '';

@@ -133,6 +133,35 @@ function doGet(e) {
     }
 
     const ss = getOrCreateMonthlySheet(monthKey);
+    const sheet = ss.getActiveSheet();
+
+    // Hỗ trợ thêm dòng hoặc xóa dòng ngay cả khi HTTP Redirect 302 chuyển POST thành GET
+    if (action === "append" && params.bien_so) {
+      sheet.appendRow([
+        params.thoi_gian || "",
+        params.bien_so || "",
+        params.hang_xe || "",
+        params.dich_vu || "",
+        params.gia || "",
+        params.nguoi_phu_trach || ""
+      ]);
+      return jsonResponse({
+        success: true,
+        row_id: sheet.getLastRow(),
+        file_url: ss.getUrl(),
+        folder_url: getOrCreateFolder().getUrl()
+      });
+    }
+
+    if (action === "delete" && params.row_id) {
+      const rowId = parseInt(params.row_id, 10);
+      if (rowId >= 2 && rowId <= sheet.getLastRow()) {
+        sheet.deleteRow(rowId);
+        return jsonResponse({ success: true, file_url: ss.getUrl() });
+      }
+      return jsonResponse({ success: false, error: "Row out of bounds" });
+    }
+
     const records = readRecordsFromSheet(ss, monthKey);
     return jsonResponse({
       success: true,
