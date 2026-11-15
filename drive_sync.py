@@ -82,21 +82,35 @@ def _call_apps_script(webhook_url: str, params: dict) -> dict:
 
 def sync_append_to_drive(month_key: str, record: dict) -> dict:
     """
-    Gửi bản ghi mới sang Google Drive (Apps Script) để tự động tạo/ghi vào file tháng tương ứng.
+    Gửi bản ghi mới sang Google Drive (Apps Script) với đầy đủ 10 trường thông tin.
     """
     webhook_url = get_drive_webhook_url()
     if not webhook_url:
         return {"synced": False, "reason": "Chưa cấu hình DRIVE_WEBHOOK_URL"}
 
+    ngay = record.get("ngay") or record.get("thoi_gian", "")
+    hieu_xe = record.get("hieu_xe") or record.get("hang_xe", "")
+    bao_gia = record.get("bao_gia") or record.get("gia", "")
+    nguoi_thuc_hien = record.get("nguoi_thuc_hien") or record.get("nguoi_phu_trach", "")
+
     params = {
         "action": "append",
         "month_key": month_key,
-        "thoi_gian": record.get("thoi_gian", ""),
+        "stt": str(record.get("stt", "")),
+        "ngay": ngay,
         "bien_so": record.get("bien_so", ""),
-        "hang_xe": record.get("hang_xe", ""),
+        "hieu_xe": hieu_xe,
         "dich_vu": record.get("dich_vu", ""),
-        "gia": record.get("gia", ""),
-        "nguoi_phu_trach": record.get("nguoi_phu_trach", ""),
+        "noi_dung": record.get("noi_dung", ""),
+        "bao_gia": str(bao_gia),
+        "thanh_toan": record.get("thanh_toan", ""),
+        "nguoi_thuc_hien": nguoi_thuc_hien,
+        "ghi_chu": record.get("ghi_chu", ""),
+        # Tương thích ngược:
+        "thoi_gian": ngay,
+        "hang_xe": hieu_xe,
+        "gia": str(bao_gia),
+        "nguoi_phu_trach": nguoi_thuc_hien,
     }
 
     try:

@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="theme-color" content="#ffffff" />
-    <title>Gara Voice — Nhập Liệu Giọng Nói</title>
+    <title>Gara Voice — Nhập Liệu Giọng Nói Ô Tô</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
@@ -49,7 +49,7 @@
         }
 
         .license-plate {
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
         }
 
         * {
@@ -62,7 +62,7 @@
 
     <!-- Thanh điều hướng -->
     <header class="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2.5 sm:gap-3">
                 <div
                     class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/20 shrink-0">
@@ -74,7 +74,7 @@
                 </div>
                 <div>
                     <h1 class="text-sm sm:text-lg font-bold text-slate-900 leading-tight">Gara Voice</h1>
-
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Hệ thống ghi nhận xe & đồng bộ Excel theo tháng</p>
                 </div>
             </div>
 
@@ -97,9 +97,9 @@
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
 
-        <!-- CARD 1: THU ÂM & BÓC TÁCH DỮ LIỆU -->
+        <!-- CARD 1: THU ÂM & FORM 10 CỘT CHUẨN GARA -->
         <section class="bg-white rounded-3xl sm:rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
             <div class="p-5 sm:p-6">
                 <!-- Thanh trạng thái & Tự động lưu -->
@@ -135,15 +135,15 @@
                     <p id="micStatusMobile" class="text-sm font-bold text-slate-800 mt-4">
                         Chạm vào Mic để nói
                     </p>
-                    <p class="text-xs text-slate-400 mt-1">
-                        “Xe 51A 12345, Mazda CX5, bảo dưỡng định kỳ, 1 triệu 2, phụ trách Minh”
+                    <p class="text-xs text-slate-400 mt-1 max-w-xs">
+                        “Xe 51A 12345, Mazda CX5, sơn cản trước, 1 triệu 2, chuyển khoản, thợ Minh, hẹn chiều lấy”
                     </p>
                 </div>
 
-                <!-- GIAO DIỆN DESKTOP (>= 640px): GIỮ NGUYÊN BỐ CỤC NGANG -->
+                <!-- GIAO DIỆN DESKTOP (>= 640px): GIỮ BỐ CỤC NGANG TIỆN LỢI -->
                 <div
                     class="bg-transparent sm:bg-slate-50/80 sm:border sm:border-slate-200/90 rounded-2xl sm:p-4 mt-2 sm:mt-0 flex flex-col sm:flex-row items-center gap-4">
-                    <!-- Nút Mic trên Desktop -->
+                    <!-- Nút Mic Desktop -->
                     <div class="hidden sm:flex flex-col items-center shrink-0">
                         <button id="btnMicDesktop" type="button" onclick="toggleSpeechRecognition()"
                             class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white flex items-center justify-center shadow-md shadow-blue-600/25 transition-all"
@@ -159,13 +159,13 @@
                         </span>
                     </div>
 
-                    <!-- Ô nhập giọng nói (Dùng chung cho cả Mobile & Desktop) -->
+                    <!-- Ô nhập giọng nói / bàn phím -->
                     <div class="flex-1 w-full">
                         <textarea id="voiceInput" rows="2"
-                            placeholder="Hoặc chạm vào đây dùng 🎙️ bàn phím: “Xe 51A 12345, Mazda CX5, thay dầu máy, 850 nghìn, phụ trách Minh”"
+                            placeholder="Hoặc chạm vào đây dùng 🎙️ bàn phím: “Xe 51A 12345, Mazda CX5, thay dầu máy, 850 nghìn, chuyển khoản, thợ Minh”"
                             class="w-full bg-slate-50 sm:bg-white rounded-2xl sm:rounded-xl border border-slate-200 px-3.5 py-2.5 text-base text-center sm:text-left text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition resize-none"></textarea>
 
-                        <!-- Nút phụ (Chỉ hiện trên Desktop) -->
+                        <!-- Nút thao tác Desktop -->
                         <div class="hidden sm:flex items-center justify-end gap-1.5 mt-2">
                             <button type="button" onclick="clearVoiceInput()"
                                 class="text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg hover:bg-slate-200/60 transition">
@@ -182,44 +182,88 @@
                 <!-- Thông báo trạng thái -->
                 <div id="alertBox" class="hidden mt-3.5 px-4 py-2.5 rounded-xl text-xs font-medium"></div>
 
-                <!-- 6 Ô kết quả chuẩn (Thời gian, Biển số, Hãng xe, Dịch vụ, Giá (tùy chọn), Người phụ trách) -->
-                <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 sm:gap-3 mt-4">
-                    <div class="hidden sm:block col-span-1">
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Thời
-                            gian</label>
-                        <input type="text" id="fieldThoiGian" placeholder="15/11/2026"
-                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                <!-- FORM 10 CỘT CHUẨN GARA Ô TÔ -->
+                <div class="mt-4 space-y-3">
+                    <!-- Hàng 1: Ngày | Biển Số | Hiệu Xe | Dịch vụ (Nhóm) -->
+                    <div class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 sm:gap-3">
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Ngày *
+                            </label>
+                            <input type="text" id="fieldNgay" placeholder="15/11/2026"
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                        <div class="col-span-1 sm:col-span-3">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Biển Số *
+                            </label>
+                            <input type="text" id="fieldBienSo" autocapitalize="characters" placeholder="51A-12345"
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-bold text-blue-700 uppercase license-plate focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                        <div class="col-span-2 sm:col-span-4">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Hiệu Xe *
+                            </label>
+                            <input type="text" id="fieldHieuXe" placeholder="Mazda CX-5, Toyota Vios..."
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                        <div class="col-span-2 sm:col-span-3">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Dịch vụ *
+                            </label>
+                            <select id="fieldDichVu"
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition cursor-pointer">
+                                <option value="Bảo Trì & Sửa Chữa">🔧 Bảo Trì & Sửa Chữa</option>
+                                <option value="Đồng Sơn TM">🎨 Đồng Sơn TM</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-span-1">
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Biển
-                            số *</label>
-                        <input type="text" id="fieldBienSo" autocapitalize="characters" placeholder="51A-12345"
-                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-bold text-blue-700 uppercase license-plate focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+
+                    <!-- Hàng 2: Nội Dung | Báo Giá Dịch Vụ | Thanh Toán -->
+                    <div class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 sm:gap-3">
+                        <div class="col-span-2 sm:col-span-6">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Nội Dung *
+                            </label>
+                            <input type="text" id="fieldNoiDung" placeholder="Thay dầu máy, lọc nhớt, sơn cản trước..."
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                        <div class="col-span-1 sm:col-span-3">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Báo Giá Dịch Vụ
+                            </label>
+                            <input type="text" id="fieldBaoGia" inputmode="numeric" placeholder="VD: 850.000"
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-bold text-emerald-600 placeholder:font-normal focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                        <div class="col-span-1 sm:col-span-3">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Thanh Toán
+                            </label>
+                            <select id="fieldThanhToan"
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition cursor-pointer">
+                                <option value="Chưa Thanh Toán">⏳ Chưa Thanh Toán</option>
+                                <option value="Tiền Mặt">💵 Tiền Mặt</option>
+                                <option value="Chuyển Khoản">💳 Chuyển Khoản</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-span-1">
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Hãng
-                            xe *</label>
-                        <input type="text" id="fieldHangXe" placeholder="Honda"
-                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
-                    </div>
-                    <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Dịch
-                            vụ *</label>
-                        <input type="text" id="fieldDichVu" placeholder="Rửa xe"
-                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
-                    </div>
-                    <div class="col-span-1">
-                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Giá
-                            (Tùy chọn)</label>
-                        <input type="text" id="fieldGia" inputmode="numeric" placeholder="Để trống được"
-                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-bold text-emerald-600 placeholder:font-normal focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
-                    </div>
-                    <div class="col-span-1">
-                        <label
-                            class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Người
-                            phụ trách</label>
-                        <input type="text" id="fieldNguoiPhuTrach" placeholder="VD: Minh"
-                            class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+
+                    <!-- Hàng 3: Người Thực Hiện | Ghi Chú -->
+                    <div class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 sm:gap-3">
+                        <div class="col-span-1 sm:col-span-4">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Người Thực Hiện
+                            </label>
+                            <input type="text" id="fieldNguoiThucHien" placeholder="VD: Minh, Thắng..."
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                        <div class="col-span-1 sm:col-span-8">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Ghi Chú
+                            </label>
+                            <input type="text" id="fieldGhiChu" placeholder="VD: Khách hẹn 17h lấy, kiểm tra thêm gầm..."
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -228,7 +272,7 @@
             <div
                 class="bg-slate-50/80 border-t border-slate-100 px-5 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span class="hidden sm:inline text-xs text-slate-500">
-                    Tự động lưu vào file Excel theo tháng & đồng bộ Google Drive
+                    Tự động lưu vào 10 cột Excel theo tháng & đồng bộ Google Drive
                 </span>
                 <button type="button" onclick="saveToExcel()"
                     class="w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-2xl sm:rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold text-sm shadow-sm shadow-blue-600/20 flex items-center justify-center gap-2 transition">
@@ -241,7 +285,7 @@
             </div>
         </section>
 
-        <!-- CARD 2: DANH SÁCH XE & TẢI FILE THEO THÁNG (Đã bỏ thống kê doanh thu) -->
+        <!-- CARD 2: DANH SÁCH 10 CỘT & TẢI FILE THEO THÁNG -->
         <section class="bg-white rounded-3xl sm:rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
             <!-- Header bảng -->
             <div
@@ -266,37 +310,40 @@
                                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
                         <span>Tải Excel</span>
-                        <span class="hidden sm:inline">(<span id="activeFilenameBadge">{{ current_filename
-                                }}</span>)</span>
+                        <span class="hidden sm:inline">(<span id="activeFilenameBadge">{{ current_filename }}</span>)</span>
                     </a>
                 </div>
             </div>
 
-            <!-- Danh sách gọn trên Mobile -->
+            <!-- Danh sách dạng Card trên Mobile -->
             <div id="mobileRecordList" class="sm:hidden divide-y divide-slate-100">
                 <div class="py-8 text-center text-slate-400 text-xs">
                     Chưa có dữ liệu trong tháng này.
                 </div>
             </div>
 
-            <!-- Bảng dữ liệu chuẩn trên Desktop -->
+            <!-- Bảng đầy đủ 10 cột trên Desktop -->
             <div class="hidden sm:block overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
                     <thead>
                         <tr
-                            class="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                            <th class="py-3 px-5">Thời gian</th>
-                            <th class="py-3 px-4">Biển số</th>
-                            <th class="py-3 px-4">Hãng xe</th>
-                            <th class="py-3 px-4">Dịch vụ</th>
-                            <th class="py-3 px-4 text-right">Giá</th>
-                            <th class="py-3 px-4">Người phụ trách</th>
-                            <th class="py-3 px-4 text-center w-14"></th>
+                            class="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/60">
+                            <th class="py-3 px-3 text-center w-12">STT</th>
+                            <th class="py-3 px-3 text-center">Ngày</th>
+                            <th class="py-3 px-3 text-center">Biển Số</th>
+                            <th class="py-3 px-3">Hiệu Xe</th>
+                            <th class="py-3 px-3 text-center">Dịch vụ</th>
+                            <th class="py-3 px-4">Nội Dung</th>
+                            <th class="py-3 px-3 text-right">Báo Giá</th>
+                            <th class="py-3 px-3 text-center">Thanh Toán</th>
+                            <th class="py-3 px-3">Người TH</th>
+                            <th class="py-3 px-3">Ghi Chú</th>
+                            <th class="py-3 px-2 text-center w-10"></th>
                         </tr>
                     </thead>
-                    <tbody id="excelTableBody" class="divide-y divide-slate-100 text-sm">
+                    <tbody id="excelTableBody" class="divide-y divide-slate-100">
                         <tr>
-                            <td colspan="7" class="py-10 text-center text-slate-400 text-xs">
+                            <td colspan="11" class="py-10 text-center text-slate-400 text-xs">
                                 Chưa có dữ liệu trong tháng này.
                             </td>
                         </tr>
@@ -307,7 +354,7 @@
 
     </main>
 
-    <!-- MÀN HÌNH KHÓA PIN (CHẶN NGƯỜI LẠ KHI PUBLIC LINK) -->
+    <!-- MÀN HÌNH KHÓA PIN BẢO MẬT -->
     <div id="pinGateOverlay"
         class="hidden fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl max-w-xs w-full p-6 text-center shadow-2xl space-y-4">
@@ -383,7 +430,10 @@
             const dd = String(now.getDate()).padStart(2, '0');
             const mm = String(now.getMonth() + 1).padStart(2, '0');
             const yyyy = now.getFullYear();
-            document.getElementById('fieldThoiGian').value = `${dd}/${mm}/${yyyy}`;
+            const el = document.getElementById('fieldNgay');
+            if (el && !el.value) {
+                el.value = `${dd}/${mm}/${yyyy}`;
+            }
         }
 
         function initSpeechRecognition() {
@@ -478,18 +528,17 @@
             }, 450);
         });
 
-        function fillSample(sampleText) {
-            document.getElementById('voiceInput').value = sampleText;
-            analyzeText();
-        }
-
         function clearVoiceInput() {
             document.getElementById('voiceInput').value = '';
+            document.getElementById('fieldNgay').value = '';
             document.getElementById('fieldBienSo').value = '';
-            document.getElementById('fieldHangXe').value = '';
-            document.getElementById('fieldDichVu').value = '';
-            document.getElementById('fieldGia').value = '';
-            document.getElementById('fieldNguoiPhuTrach').value = '';
+            document.getElementById('fieldHieuXe').value = '';
+            document.getElementById('fieldDichVu').value = 'Bảo Trì & Sửa Chữa';
+            document.getElementById('fieldNoiDung').value = '';
+            document.getElementById('fieldBaoGia').value = '';
+            document.getElementById('fieldThanhToan').value = 'Chưa Thanh Toán';
+            document.getElementById('fieldNguoiThucHien').value = '';
+            document.getElementById('fieldGhiChu').value = '';
             setTodayDefault();
             hideAlert();
             updateBadge('Sẵn sàng', 'neutral');
@@ -507,12 +556,15 @@
                 });
                 const data = await res.json();
 
-                document.getElementById('fieldThoiGian').value = data.thoi_gian || '';
+                if (data.ngay) document.getElementById('fieldNgay').value = data.ngay;
                 document.getElementById('fieldBienSo').value = data.bien_so || '';
-                document.getElementById('fieldHangXe').value = data.hang_xe || '';
-                document.getElementById('fieldDichVu').value = data.dich_vu || '';
-                document.getElementById('fieldGia').value = data.gia_hien_thi || '';
-                document.getElementById('fieldNguoiPhuTrach').value = data.nguoi_phu_trach || '';
+                document.getElementById('fieldHieuXe').value = data.hieu_xe || '';
+                if (data.dich_vu) document.getElementById('fieldDichVu').value = data.dich_vu;
+                document.getElementById('fieldNoiDung').value = data.noi_dung || '';
+                document.getElementById('fieldBaoGia').value = data.bao_gia_hien_thi || '';
+                if (data.thanh_toan) document.getElementById('fieldThanhToan').value = data.thanh_toan;
+                document.getElementById('fieldNguoiThucHien').value = data.nguoi_thuc_hien || '';
+                document.getElementById('fieldGhiChu').value = data.ghi_chu || '';
 
                 if (data.is_valid) {
                     updateBadge('Đủ thông tin ✓', 'valid');
@@ -532,16 +584,17 @@
         }
 
         async function saveToExcel() {
-            if (!document.getElementById('fieldThoiGian').value) {
-                setTodayDefault();
-            }
+            setTodayDefault();
             const payload = {
-                thoi_gian: document.getElementById('fieldThoiGian').value.trim(),
+                ngay: document.getElementById('fieldNgay').value.trim(),
                 bien_so: document.getElementById('fieldBienSo').value.trim(),
-                hang_xe: document.getElementById('fieldHangXe').value.trim(),
-                dich_vu: document.getElementById('fieldDichVu').value.trim(),
-                gia: document.getElementById('fieldGia').value.trim(),
-                nguoi_phu_trach: document.getElementById('fieldNguoiPhuTrach').value.trim(),
+                hieu_xe: document.getElementById('fieldHieuXe').value.trim(),
+                dich_vu: document.getElementById('fieldDichVu').value,
+                noi_dung: document.getElementById('fieldNoiDung').value.trim(),
+                bao_gia: document.getElementById('fieldBaoGia').value.trim(),
+                thanh_toan: document.getElementById('fieldThanhToan').value,
+                nguoi_thuc_hien: document.getElementById('fieldNguoiThucHien').value.trim(),
+                ghi_chu: document.getElementById('fieldGhiChu').value.trim(),
                 pin: getSavedPin()
             };
 
@@ -576,20 +629,22 @@
                     driveNote = `<br/><span class="text-amber-700">⚠️ Chưa lưu được lên Drive: ${result.drive.error}</span>`;
                     alertType = 'warning';
                 }
-                const giaText = result.record.gia ? `: <b>${result.record.gia}đ</b>` : '';
-                const staffText = result.record.nguoi_phu_trach ? ` • Phụ trách: <b>${result.record.nguoi_phu_trach}</b>` : '';
+                const giaText = result.record.bao_gia ? `: <b>${result.record.bao_gia}đ</b>` : '';
+                const staffText = result.record.nguoi_thuc_hien ? ` • Thợ: <b>${result.record.nguoi_thuc_hien}</b>` : '';
 
                 showAlert(
-                    `Đã lưu <b>${result.record.bien_so}</b> (${result.record.hang_xe} - ${result.record.dich_vu}${giaText}${staffText}) vào <b>${result.record.filename}</b>${driveNote}`,
+                    `Đã lưu <b>${result.record.bien_so}</b> (${result.record.hieu_xe} - ${result.record.noi_dung}${giaText}${staffText}) vào <b>${result.record.filename}</b>${driveNote}`,
                     alertType
                 );
                 updateBadge('Đã lưu ✓', 'valid');
                 document.getElementById('voiceInput').value = '';
                 document.getElementById('fieldBienSo').value = '';
-                document.getElementById('fieldHangXe').value = '';
-                document.getElementById('fieldDichVu').value = '';
-                document.getElementById('fieldGia').value = '';
-                document.getElementById('fieldNguoiPhuTrach').value = '';
+                document.getElementById('fieldHieuXe').value = '';
+                document.getElementById('fieldNoiDung').value = '';
+                document.getElementById('fieldBaoGia').value = '';
+                document.getElementById('fieldNguoiThucHien').value = '';
+                document.getElementById('fieldGhiChu').value = '';
+                document.getElementById('fieldThanhToan').value = 'Chưa Thanh Toán';
                 setTodayDefault();
 
                 selectedMonthKey = result.record.month_key || selectedMonthKey;
@@ -616,6 +671,22 @@
             } else {
                 headerBtn.classList.add('hidden');
             }
+        }
+
+        function getPaymentBadgeHtml(status) {
+            if (status === 'Tiền Mặt') {
+                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">💵 Tiền Mặt</span>';
+            } else if (status === 'Chuyển Khoản') {
+                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">💳 Chuyển Khoản</span>';
+            }
+            return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">⏳ Chưa Trả</span>';
+        }
+
+        function getServiceBadgeHtml(service) {
+            if (service === 'Đồng Sơn TM') {
+                return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">🎨 Đồng Sơn TM</span>';
+            }
+            return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">🔧 Bảo Trì</span>';
         }
 
         async function loadRecords(monthKey = '') {
@@ -659,53 +730,66 @@
 
                 if (!data.records || data.records.length === 0) {
                     const emptyHtml = `Chưa có dữ liệu xe trong <b>${data.filename}</b>`;
-                    tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-xs">${emptyHtml}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-400 text-xs">${emptyHtml}</td></tr>`;
                     mobileList.innerHTML = `<div class="py-8 text-center text-slate-400 text-xs">${emptyHtml}</div>`;
                     return;
                 }
 
-                // Danh sách gọn trên Mobile
+                // Danh sách Card chi tiết trên Mobile
                 mobileList.innerHTML = data.records.map(r => `
-                    <div class="p-3.5 flex items-center justify-between gap-3 active:bg-slate-50">
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2 py-0.5 rounded border border-blue-200/70 license-plate">
+                    <div class="p-3.5 space-y-1.5 active:bg-slate-50">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="text-xs font-bold text-slate-400">#${r.stt}</span>
+                                <span class="bg-blue-50 text-blue-700 font-bold text-xs px-2 py-0.5 rounded border border-blue-200/70 license-plate">
                                     ${r.bien_so}
                                 </span>
-                                <span class="font-semibold text-sm text-slate-800 truncate">${r.hang_xe}</span>
-                                <span class="text-[11px] text-slate-400 ml-auto">${r.thoi_gian}</span>
+                                <span class="font-bold text-sm text-slate-800 truncate">${r.hieu_xe}</span>
                             </div>
-                            <div class="flex items-center justify-between mt-1 gap-2">
-                                <span class="text-xs text-slate-500 truncate">
-                                    ${r.dich_vu}${r.nguoi_phu_trach ? ` • 👤 ${r.nguoi_phu_trach}` : ''}
-                                </span>
-                                <span class="text-xs font-bold text-emerald-600 shrink-0">${r.gia ? r.gia + 'đ' : '—'}</span>
-                            </div>
+                            <span class="text-[11px] text-slate-400 shrink-0">${r.ngay}</span>
                         </div>
-                        <button
-                            onclick="deleteRecord(${r.row_id}, '${r.month_key}')"
-                            class="w-7 h-7 rounded-lg text-slate-300 active:text-red-600 flex items-center justify-center shrink-0"
-                            title="Xóa"
-                        >
-                            ✕
-                        </button>
+
+                        <div class="flex items-center gap-2">
+                            ${getServiceBadgeHtml(r.dich_vu)}
+                            <span class="text-xs font-medium text-slate-700 truncate">${r.noi_dung}</span>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-bold text-emerald-600">${r.bao_gia ? r.bao_gia + 'đ' : '—'}</span>
+                                ${getPaymentBadgeHtml(r.thanh_toan)}
+                                ${r.nguoi_thuc_hien ? `<span class="text-[11px] text-slate-600">👤 ${r.nguoi_thuc_hien}</span>` : ''}
+                            </div>
+                            <button
+                                onclick="deleteRecord(${r.row_id}, '${r.month_key}')"
+                                class="w-7 h-7 rounded-lg text-slate-300 active:text-red-600 flex items-center justify-center shrink-0"
+                                title="Xóa"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        ${r.ghi_chu ? `<div class="text-[11px] text-amber-700 bg-amber-50/60 rounded px-2 py-0.5">📝 ${r.ghi_chu}</div>` : ''}
                     </div>
                 `).join('');
 
-                // Bảng đầy đủ trên Desktop
+                // Bảng đầy đủ 10 cột trên Desktop
                 tbody.innerHTML = data.records.map(r => `
                     <tr class="hover:bg-slate-50/80 transition group">
-                        <td class="py-3 px-5 text-slate-500 text-xs font-medium">${r.thoi_gian}</td>
-                        <td class="py-3 px-4">
-                            <span class="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-md border border-blue-200/60 license-plate">
+                        <td class="py-3 px-3 text-center text-slate-400 font-semibold text-xs">${r.stt}</td>
+                        <td class="py-3 px-3 text-center text-slate-500 text-xs font-medium">${r.ngay}</td>
+                        <td class="py-3 px-3 text-center">
+                            <span class="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2 py-0.5 rounded border border-blue-200/60 license-plate">
                                 ${r.bien_so}
                             </span>
                         </td>
-                        <td class="py-3 px-4 font-medium text-slate-800">${r.hang_xe}</td>
-                        <td class="py-3 px-4 text-slate-600">${r.dich_vu}</td>
-                        <td class="py-3 px-4 text-right font-bold text-emerald-600">${r.gia || '<span class="text-slate-300 font-normal">—</span>'}</td>
-                        <td class="py-3 px-4 text-slate-700 font-medium">${r.nguoi_phu_trach || '<span class="text-slate-300 font-normal">—</span>'}</td>
-                        <td class="py-3 px-4 text-center">
+                        <td class="py-3 px-3 font-semibold text-slate-800">${r.hieu_xe}</td>
+                        <td class="py-3 px-3 text-center">${getServiceBadgeHtml(r.dich_vu)}</td>
+                        <td class="py-3 px-4 font-medium text-slate-700">${r.noi_dung}</td>
+                        <td class="py-3 px-3 text-right font-bold text-emerald-600">${r.bao_gia ? r.bao_gia + 'đ' : '<span class="text-slate-300 font-normal">—</span>'}</td>
+                        <td class="py-3 px-3 text-center">${getPaymentBadgeHtml(r.thanh_toan)}</td>
+                        <td class="py-3 px-3 text-slate-700 font-medium">${r.nguoi_thuc_hien || '<span class="text-slate-300 font-normal">—</span>'}</td>
+                        <td class="py-3 px-3 text-slate-500 text-xs">${r.ghi_chu || '<span class="text-slate-300">—</span>'}</td>
+                        <td class="py-3 px-2 text-center">
                             <button
                                 onclick="deleteRecord(${r.row_id}, '${r.month_key}')"
                                 class="text-slate-300 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition"

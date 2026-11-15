@@ -11,8 +11,19 @@ from parser import format_price_vn, parse_price_input
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
-# 6 cột: Thời gian | Biển số | Hãng xe | Dịch vụ | Giá | Người phụ trách
-HEADERS = ["Thời gian", "Biển số", "Hãng xe", "Dịch vụ", "Giá", "Người phụ trách"]
+# 10 cột chuẩn theo yêu cầu Gara Ô tô
+HEADERS = [
+    "STT",
+    "Ngày",
+    "Biển Số",
+    "Hiệu Xe",
+    "Dịch vụ",
+    "Nội Dung",
+    "Báo Giá Dịch Vụ",
+    "Thanh Toán",
+    "Người Thực Hiện",
+    "Ghi Chú",
+]
 
 _excel_lock = threading.Lock()
 
@@ -58,7 +69,7 @@ def get_excel_path_for_month(month_key: str = "") -> str:
 def _style_header_row(ws) -> None:
     header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")
-    header_align = Alignment(horizontal="center", vertical="center")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
     thin_border = Border(
         left=Side(style="thin", color="CBD5E1"),
         right=Side(style="thin", color="CBD5E1"),
@@ -66,7 +77,7 @@ def _style_header_row(ws) -> None:
         bottom=Side(style="thin", color="CBD5E1"),
     )
 
-    ws.row_dimensions[1].height = 26
+    ws.row_dimensions[1].height = 28
     for col_idx, header_text in enumerate(HEADERS, start=1):
         cell = ws.cell(row=1, column=col_idx)
         cell.value = header_text
@@ -75,15 +86,41 @@ def _style_header_row(ws) -> None:
         cell.alignment = header_align
         cell.border = thin_border
 
-    col_widths = [16, 18, 18, 28, 16, 20]
+    # Độ rộng tối ưu cho 10 cột
+    col_widths = [6, 14, 16, 18, 22, 32, 18, 18, 18, 24]
     for idx, width in enumerate(col_widths, start=1):
         ws.column_dimensions[get_column_letter(idx)].width = width
+
+
+def _style_data_row(ws, row_idx: int) -> None:
+    data_font = Font(name="Arial", size=11)
+    thin_border = Border(
+        left=Side(style="thin", color="E2E8F0"),
+        right=Side(style="thin", color="E2E8F0"),
+        top=Side(style="thin", color="E2E8F0"),
+        bottom=Side(style="thin", color="E2E8F0"),
+    )
+
+    ws.row_dimensions[row_idx].height = 24
+    for col_idx in range(1, len(HEADERS) + 1):
+        cell = ws.cell(row=row_idx, column=col_idx)
+        cell.font = data_font
+        cell.border = thin_border
+        # 1: STT, 2: Ngày, 3: Biển Số, 5: Dịch vụ, 8: Thanh Toán -> Căn giữa
+        if col_idx in (1, 2, 3, 5, 8):
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        # 7: Báo Giá Dịch Vụ -> Căn phải
+        elif col_idx == 7:
+            cell.alignment = Alignment(horizontal="right", vertical="center")
+        # 4: Hiệu Xe, 6: Nội Dung, 9: Người Thực Hiện, 10: Ghi Chú -> Căn trái
+        else:
+            cell.alignment = Alignment(horizontal="left", vertical="center")
 
 
 def ensure_excel_file(month_key: str = "") -> str:
     """
     Kiểm tra và khởi tạo file Excel cho tháng tương ứng nếu chưa tồn tại.
-    Nếu file cũ mới chỉ có 5 cột thì tự động bổ sung cột thứ 6 'Người phụ trách'.
+    Nếu file cũ có cấu trúc cột cũ thì tự động nâng cấp lên 10 cột chuẩn.
     """
     os.makedirs(DATA_DIR, exist_ok=True)
     mk = get_month_key_from_date(month_key)
@@ -99,8 +136,54 @@ def ensure_excel_file(month_key: str = "") -> str:
     else:
         wb = load_workbook(file_path)
         ws = wb.active
-        if ws.max_column < len(HEADERS) or ws.cell(row=1, column=6).value != "Người phụ trách":
+        needs_migration = (
+            ws.max_column != len(HEADERS)
+            or ws.cell(row=1, column=1).value != "STT"
+            or ws.cell(row=1, column=len(HEADERS)).value != "Ghi Chú"
+        )
+        if needs_migration:
+            # Đọc lại dữ liệu cũ để nâng cấp sang 10 cột
+            old_rows = []
+            for r in range(2, ws.max_row + 1):
+                row_vals = [ws.cell(row=r, column=c).value for c in range(1, ws.max_column + 1)]
+                if any(row_vals):
+                    old_rows.append(row_vals)
+
+            # Xóa sạch và tạo lại với 10 cột chuẩn
+            wb.remove(ws)
+            ws = wb.create_sheet(title=f"Thang_{mk}")
+            ws.append(HEADERS)
             _style_header_row(ws)
+
+            for idx, rvals in enumerate(old_rows, start=1):
+                # Map từ cấu trúc cũ sang 10 cột
+                thoi_gian = str(rvals[0] or "") if len(rvals) > 0 else ""
+                bien_so = str(rvals[1] or "") if len(rvals) > 1 else ""
+                hieu_xe = str(rvals[2] or "") if len(rvals) > 2 else ""
+                dich_vu_old = str(rvals[3] or "") if len(rvals) > 3 else ""
+                gia_old = rvals[4] if len(rvals) > 4 else ""
+                nguoi_pt = str(rvals[5] or "") if len(rvals) > 5 else ""
+
+                gia_int = parse_price_input(gia_old)
+                gia_fmt = format_price_vn(gia_int) if gia_int > 0 else ""
+
+                dich_vu_grp = "Đồng Sơn TM" if "đồng sơn" in dich_vu_old.lower() or "sơn" in dich_vu_old.lower() else "Bảo Trì & Sửa Chữa"
+
+                new_row = [
+                    idx,
+                    thoi_gian,
+                    bien_so,
+                    hieu_xe,
+                    dich_vu_grp,
+                    dich_vu_old,
+                    gia_fmt,
+                    "Chưa Thanh Toán",
+                    nguoi_pt,
+                    "",
+                ]
+                ws.append(new_row)
+                _style_data_row(ws, ws.max_row)
+
             wb.save(file_path)
 
     return file_path
@@ -130,52 +213,41 @@ def list_monthly_files() -> list[dict]:
     return sorted_items
 
 
-def _style_data_row(ws, row_idx: int) -> None:
-    data_font = Font(name="Arial", size=11)
-    thin_border = Border(
-        left=Side(style="thin", color="E2E8F0"),
-        right=Side(style="thin", color="E2E8F0"),
-        top=Side(style="thin", color="E2E8F0"),
-        bottom=Side(style="thin", color="E2E8F0"),
-    )
-
-    ws.row_dimensions[row_idx].height = 22
-    for col_idx in range(1, len(HEADERS) + 1):
-        cell = ws.cell(row=row_idx, column=col_idx)
-        cell.font = data_font
-        cell.border = thin_border
-        if col_idx in (1, 2):
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-        elif col_idx == 5:
-            cell.alignment = Alignment(horizontal="right", vertical="center")
-        else:
-            cell.alignment = Alignment(horizontal="left", vertical="center")
-
-
 def append_to_excel(record: dict) -> dict:
     """
-    Ghi nối tiếp 1 bản ghi vào file Excel của tháng tương ứng.
-    Cột Giá có thể để trống nếu không nhập.
+    Ghi nối tiếp 1 bản ghi vào file Excel của tháng tương ứng với đúng 10 cột chuẩn.
+    Tự động tính STT tăng dần.
     """
     with _excel_lock:
-        thoi_gian = record.get("thoi_gian", "")
-        month_key = get_month_key_from_date(thoi_gian)
+        ngay = (record.get("ngay") or record.get("thoi_gian") or datetime.now().strftime("%d/%m/%Y")).strip()
+        month_key = get_month_key_from_date(ngay)
         file_path = ensure_excel_file(month_key)
 
         wb = load_workbook(file_path)
         ws = wb.active
 
-        gia_int = parse_price_input(record.get("gia", 0))
-        gia_formatted = format_price_vn(gia_int) if gia_int > 0 else ""
-        nguoi_phu_trach = (record.get("nguoi_phu_trach") or "").strip()
+        stt = max(1, ws.max_row)  # Khi chỉ có header (max_row = 1) -> stt = 1
+        bien_so = (record.get("bien_so") or "").strip().upper()
+        hieu_xe = (record.get("hieu_xe") or record.get("hang_xe") or "").strip()
+        dich_vu = (record.get("dich_vu") or "Bảo Trì & Sửa Chữa").strip()
+        noi_dung = (record.get("noi_dung") or "").strip()
+        bao_gia_int = parse_price_input(record.get("bao_gia") if "bao_gia" in record else record.get("gia"))
+        bao_gia_formatted = format_price_vn(bao_gia_int) if bao_gia_int > 0 else ""
+        thanh_toan = (record.get("thanh_toan") or "Chưa Thanh Toán").strip()
+        nguoi_thuc_hien = (record.get("nguoi_thuc_hien") or record.get("nguoi_phu_trach") or "").strip()
+        ghi_chu = (record.get("ghi_chu") or "").strip()
 
         row_values = [
-            thoi_gian,
-            record.get("bien_so", ""),
-            record.get("hang_xe", ""),
-            record.get("dich_vu", ""),
-            gia_formatted,
-            nguoi_phu_trach,
+            stt,
+            ngay,
+            bien_so,
+            hieu_xe,
+            dich_vu,
+            noi_dung,
+            bao_gia_formatted,
+            thanh_toan,
+            nguoi_thuc_hien,
+            ghi_chu,
         ]
 
         ws.append(row_values)
@@ -185,19 +257,32 @@ def append_to_excel(record: dict) -> dict:
 
         return {
             "row_id": new_row_idx,
+            "stt": stt,
             "month_key": month_key,
             "filename": os.path.basename(file_path),
-            "thoi_gian": row_values[0],
-            "bien_so": row_values[1],
-            "hang_xe": row_values[2],
-            "dich_vu": row_values[3],
-            "gia": gia_formatted,
-            "gia_int": gia_int,
-            "nguoi_phu_trach": nguoi_phu_trach,
+            "ngay": ngay,
+            "bien_so": bien_so,
+            "hieu_xe": hieu_xe,
+            "dich_vu": dich_vu,
+            "noi_dung": noi_dung,
+            "bao_gia": bao_gia_formatted,
+            "bao_gia_int": bao_gia_int,
+            "thanh_toan": thanh_toan,
+            "nguoi_thuc_hien": nguoi_thuc_hien,
+            "ghi_chu": ghi_chu,
+            # Tương thích ngược:
+            "thoi_gian": ngay,
+            "hang_xe": hieu_xe,
+            "gia": bao_gia_formatted,
+            "gia_int": bao_gia_int,
+            "nguoi_phu_trach": nguoi_thuc_hien,
         }
 
 
 def read_all_records(month_key: str = "") -> tuple[str, str, list[dict]]:
+    """
+    Đọc tất cả các bản ghi của tháng tương ứng thành danh sách dict 10 trường.
+    """
     with _excel_lock:
         mk = get_month_key_from_date(month_key)
         file_path = ensure_excel_file(mk)
@@ -206,30 +291,44 @@ def read_all_records(month_key: str = "") -> tuple[str, str, list[dict]]:
 
         records = []
         for row_idx in range(2, ws.max_row + 1):
-            thoi_gian = ws.cell(row=row_idx, column=1).value
-            bien_so = ws.cell(row=row_idx, column=2).value
-            hang_xe = ws.cell(row=row_idx, column=3).value
-            dich_vu = ws.cell(row=row_idx, column=4).value
-            gia_val = ws.cell(row=row_idx, column=5).value
-            nguoi_phu_trach = ws.cell(row=row_idx, column=6).value
+            stt_val = ws.cell(row=row_idx, column=1).value
+            ngay = ws.cell(row=row_idx, column=2).value
+            bien_so = ws.cell(row=row_idx, column=3).value
+            hieu_xe = ws.cell(row=row_idx, column=4).value
+            dich_vu = ws.cell(row=row_idx, column=5).value
+            noi_dung = ws.cell(row=row_idx, column=6).value
+            bao_gia_val = ws.cell(row=row_idx, column=7).value
+            thanh_toan = ws.cell(row=row_idx, column=8).value
+            nguoi_thuc_hien = ws.cell(row=row_idx, column=9).value
+            ghi_chu = ws.cell(row=row_idx, column=10).value
 
-            if not any([thoi_gian, bien_so, hang_xe, dich_vu, gia_val, nguoi_phu_trach]):
+            if not any([ngay, bien_so, hieu_xe, dich_vu, noi_dung, bao_gia_val, nguoi_thuc_hien]):
                 continue
 
-            gia_int = parse_price_input(gia_val)
-            gia_str = format_price_vn(gia_int) if gia_int > 0 else str(gia_val or "")
+            bao_gia_int = parse_price_input(bao_gia_val)
+            bao_gia_str = format_price_vn(bao_gia_int) if bao_gia_int > 0 else str(bao_gia_val or "")
 
             records.append(
                 {
                     "row_id": row_idx,
+                    "stt": stt_val if stt_val is not None else (row_idx - 1),
                     "month_key": mk,
-                    "thoi_gian": str(thoi_gian or ""),
+                    "ngay": str(ngay or ""),
                     "bien_so": str(bien_so or ""),
-                    "hang_xe": str(hang_xe or ""),
+                    "hieu_xe": str(hieu_xe or ""),
                     "dich_vu": str(dich_vu or ""),
-                    "gia": gia_str,
-                    "gia_int": gia_int,
-                    "nguoi_phu_trach": str(nguoi_phu_trach or ""),
+                    "noi_dung": str(noi_dung or ""),
+                    "bao_gia": bao_gia_str,
+                    "bao_gia_int": bao_gia_int,
+                    "thanh_toan": str(thanh_toan or "Chưa Thanh Toán"),
+                    "nguoi_thuc_hien": str(nguoi_thuc_hien or ""),
+                    "ghi_chu": str(ghi_chu or ""),
+                    # Tương thích ngược:
+                    "thoi_gian": str(ngay or ""),
+                    "hang_xe": str(hieu_xe or ""),
+                    "gia": bao_gia_str,
+                    "gia_int": bao_gia_int,
+                    "nguoi_phu_trach": str(nguoi_thuc_hien or ""),
                 }
             )
 
@@ -238,6 +337,7 @@ def read_all_records(month_key: str = "") -> tuple[str, str, list[dict]]:
 
 
 def delete_record_by_row(row_id: int, month_key: str = "") -> bool:
+    """Xóa 1 dòng và tự động cập nhật lại STT từ 1..N"""
     with _excel_lock:
         mk = get_month_key_from_date(month_key)
         file_path = ensure_excel_file(mk)
@@ -245,12 +345,16 @@ def delete_record_by_row(row_id: int, month_key: str = "") -> bool:
         ws = wb.active
         if 2 <= row_id <= ws.max_row:
             ws.delete_rows(row_id, 1)
+            # Tái lập số thứ tự STT chuẩn
+            for r in range(2, ws.max_row + 1):
+                ws.cell(row=r, column=1).value = r - 1
             wb.save(file_path)
             return True
         return False
 
 
 def replace_month_records_from_drive(month_key: str, drive_records: list[dict]) -> None:
+    """Đồng bộ toàn bộ danh sách bản ghi từ Google Drive về file Excel local."""
     with _excel_lock:
         mk = get_month_key_from_date(month_key)
         file_path = get_excel_path_for_month(mk)
@@ -261,17 +365,31 @@ def replace_month_records_from_drive(month_key: str, drive_records: list[dict]) 
         wb = load_workbook(file_path)
         ws = wb.active
 
-        for rec in drive_records:
-            gia_int = parse_price_input(rec.get("gia", 0))
-            gia_formatted = format_price_vn(gia_int) if gia_int > 0 else ""
+        for idx, rec in enumerate(drive_records, start=1):
+            bao_gia_int = parse_price_input(rec.get("bao_gia") if "bao_gia" in rec else rec.get("gia"))
+            bao_gia_formatted = format_price_vn(bao_gia_int) if bao_gia_int > 0 else ""
+            stt = rec.get("stt") or idx
+            ngay = rec.get("ngay") or rec.get("thoi_gian", "")
+            bien_so = rec.get("bien_so", "")
+            hieu_xe = rec.get("hieu_xe") or rec.get("hang_xe", "")
+            dich_vu = rec.get("dich_vu", "Bảo Trì & Sửa Chữa")
+            noi_dung = rec.get("noi_dung", "")
+            thanh_toan = rec.get("thanh_toan", "Chưa Thanh Toán")
+            nguoi_thuc_hien = rec.get("nguoi_thuc_hien") or rec.get("nguoi_phu_trach", "")
+            ghi_chu = rec.get("ghi_chu", "")
+
             ws.append(
                 [
-                    rec.get("thoi_gian", ""),
-                    rec.get("bien_so", ""),
-                    rec.get("hang_xe", ""),
-                    rec.get("dich_vu", ""),
-                    gia_formatted,
-                    rec.get("nguoi_phu_trach", ""),
+                    stt,
+                    ngay,
+                    bien_so,
+                    hieu_xe,
+                    dich_vu,
+                    noi_dung,
+                    bao_gia_formatted,
+                    thanh_toan,
+                    nguoi_thuc_hien,
+                    ghi_chu,
                 ]
             )
             _style_data_row(ws, ws.max_row)

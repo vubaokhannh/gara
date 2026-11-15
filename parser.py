@@ -4,7 +4,6 @@ from datetime import datetime
 
 # Danh sách các hãng & dòng xe Ô TÔ phổ biến tại Việt Nam để nhận diện chuẩn xác
 KNOWN_BRANDS = {
-    # Các hãng ô tô
     "toyota": "Toyota",
     "tô yô ta": "Toyota",
     "honda": "Honda",
@@ -54,8 +53,20 @@ KNOWN_BRANDS = {
     "jeep": "Jeep",
     "thaco": "Thaco",
     "hino": "Hino",
-    # Các dòng xe Ô tô phổ biến -> tự động gắn Hãng + Dòng xe
     # Toyota
+    "toyota vios": "Toyota Vios",
+    "toyota innova": "Toyota Innova",
+    "toyota fortuner": "Toyota Fortuner",
+    "toyota camry": "Toyota Camry",
+    "toyota corolla cross": "Toyota Corolla Cross",
+    "toyota cross": "Toyota Corolla Cross",
+    "toyota yaris": "Toyota Yaris",
+    "toyota veloz": "Toyota Veloz",
+    "toyota avanza": "Toyota Avanza",
+    "toyota raize": "Toyota Raize",
+    "toyota hilux": "Toyota Hilux",
+    "toyota altis": "Toyota Altis",
+    "toyota wigo": "Toyota Wigo",
     "vios": "Toyota Vios",
     "innova": "Toyota Innova",
     "innova cross": "Toyota Innova Cross",
@@ -73,6 +84,13 @@ KNOWN_BRANDS = {
     "altis": "Toyota Altis",
     "wigo": "Toyota Wigo",
     # Honda Ô tô
+    "honda civic": "Honda Civic",
+    "honda crv": "Honda CR-V",
+    "honda cr-v": "Honda CR-V",
+    "honda hrv": "Honda HR-V",
+    "honda hr-v": "Honda HR-V",
+    "honda city": "Honda City",
+    "honda accord": "Honda Accord",
     "civic": "Honda Civic",
     "crv": "Honda CR-V",
     "cr-v": "Honda CR-V",
@@ -84,6 +102,24 @@ KNOWN_BRANDS = {
     "accord": "Honda Accord",
     "brio": "Honda Brio",
     # Mazda
+    "mazda cx5": "Mazda CX-5",
+    "mazda cx-5": "Mazda CX-5",
+    "mazda cx 5": "Mazda CX-5",
+    "mazda cx8": "Mazda CX-8",
+    "mazda cx-8": "Mazda CX-8",
+    "mazda cx 8": "Mazda CX-8",
+    "mazda cx3": "Mazda CX-3",
+    "mazda cx-3": "Mazda CX-3",
+    "mazda cx30": "Mazda CX-30",
+    "mazda cx-30": "Mazda CX-30",
+    "mazda 2": "Mazda 2",
+    "mazda2": "Mazda 2",
+    "mazda 3": "Mazda 3",
+    "mazda3": "Mazda 3",
+    "mazda 6": "Mazda 6",
+    "mazda6": "Mazda 6",
+    "mazda bt50": "Mazda BT-50",
+    "mazda bt-50": "Mazda BT-50",
     "cx5": "Mazda CX-5",
     "cx-5": "Mazda CX-5",
     "cx8": "Mazda CX-8",
@@ -92,15 +128,18 @@ KNOWN_BRANDS = {
     "cx-3": "Mazda CX-3",
     "cx30": "Mazda CX-30",
     "cx-30": "Mazda CX-30",
-    "mazda 2": "Mazda 2",
-    "mazda2": "Mazda 2",
-    "mazda 3": "Mazda 3",
-    "mazda3": "Mazda 3",
-    "mazda 6": "Mazda 6",
-    "mazda6": "Mazda 6",
     "bt50": "Mazda BT-50",
     "bt-50": "Mazda BT-50",
     # Hyundai
+    "hyundai accent": "Hyundai Accent",
+    "hyundai santafe": "Hyundai SantaFe",
+    "hyundai santa fe": "Hyundai SantaFe",
+    "hyundai tucson": "Hyundai Tucson",
+    "hyundai creta": "Hyundai Creta",
+    "hyundai elantra": "Hyundai Elantra",
+    "hyundai i10": "Hyundai i10",
+    "hyundai grand i10": "Hyundai Grand i10",
+    "hyundai kona": "Hyundai Kona",
     "accent": "Hyundai Accent",
     "santafe": "Hyundai SantaFe",
     "santa fe": "Hyundai SantaFe",
@@ -117,6 +156,17 @@ KNOWN_BRANDS = {
     "solati": "Hyundai Solati",
     "porter": "Hyundai Porter",
     # Kia
+    "kia morning": "Kia Morning",
+    "kia seltos": "Kia Seltos",
+    "kia sonet": "Kia Sonet",
+    "kia carnival": "Kia Carnival",
+    "kia sedona": "Kia Sedona",
+    "kia sportage": "Kia Sportage",
+    "kia sorento": "Kia Sorento",
+    "kia k3": "Kia K3",
+    "kia k5": "Kia K5",
+    "kia cerato": "Kia Cerato",
+    "kia soluto": "Kia Soluto",
     "morning": "Kia Morning",
     "seltos": "Kia Seltos",
     "sonet": "Kia Sonet",
@@ -130,6 +180,12 @@ KNOWN_BRANDS = {
     "soluto": "Kia Soluto",
     "carens": "Kia Carens",
     # Ford
+    "ford ranger": "Ford Ranger",
+    "ford raptor": "Ford Ranger Raptor",
+    "ford everest": "Ford Everest",
+    "ford territory": "Ford Territory",
+    "ford explorer": "Ford Explorer",
+    "ford transit": "Ford Transit",
     "ranger": "Ford Ranger",
     "raptor": "Ford Ranger Raptor",
     "everest": "Ford Everest",
@@ -138,6 +194,11 @@ KNOWN_BRANDS = {
     "ecosport": "Ford EcoSport",
     "transit": "Ford Transit",
     # Mitsubishi
+    "mitsubishi xpander": "Mitsubishi Xpander",
+    "mitsubishi xforce": "Mitsubishi Xforce",
+    "mitsubishi outlander": "Mitsubishi Outlander",
+    "mitsubishi pajero": "Mitsubishi Pajero",
+    "mitsubishi triton": "Mitsubishi Triton",
     "xpander": "Mitsubishi Xpander",
     "xpander cross": "Mitsubishi Xpander Cross",
     "xforce": "Mitsubishi Xforce",
@@ -147,18 +208,21 @@ KNOWN_BRANDS = {
     "triton": "Mitsubishi Triton",
     "attrage": "Mitsubishi Attrage",
     # VinFast Ô tô
-    "vf3": "VinFast VF3",
-    "vf 3": "VinFast VF3",
-    "vf5": "VinFast VF5",
-    "vf 5": "VinFast VF5",
-    "vf6": "VinFast VF6",
-    "vf 6": "VinFast VF6",
-    "vf7": "VinFast VF7",
-    "vf 7": "VinFast VF7",
-    "vf8": "VinFast VF8",
-    "vf 8": "VinFast VF8",
-    "vf9": "VinFast VF9",
-    "vf 9": "VinFast VF9",
+    "vinfast vf3": "VinFast VF3",
+    "vinfast vf 3": "VinFast VF3",
+    "vinfast vf5": "VinFast VF5",
+    "vinfast vf 5": "VinFast VF5",
+    "vinfast vf6": "VinFast VF6",
+    "vinfast vf 6": "VinFast VF6",
+    "vinfast vf7": "VinFast VF7",
+    "vinfast vf 7": "VinFast VF7",
+    "vinfast vf8": "VinFast VF8",
+    "vinfast vf 8": "VinFast VF8",
+    "vinfast vf9": "VinFast VF9",
+    "vinfast vf 9": "VinFast VF9",
+    "vinfast fadil": "VinFast Fadil",
+    "vinfast lux a": "VinFast Lux A2.0",
+    "vinfast lux sa": "VinFast Lux SA2.0",
     "vfe34": "VinFast VF e34",
     "vf e34": "VinFast VF e34",
     "fadil": "VinFast Fadil",
@@ -185,7 +249,34 @@ KNOWN_BRANDS = {
     "s450": "Mercedes S450",
 }
 
-# Danh sách dịch vụ GARA Ô TÔ phổ biến
+# Các từ khóa thuộc nhóm dịch vụ "Đồng Sơn TM"
+DONG_SON_KEYWORDS = [
+    "đồng sơn tm",
+    "đồng sơn thương mại",
+    "đồng sơn",
+    "sơn dặm",
+    "sơn quây cả xe",
+    "sơn quây",
+    "sơn cản trước",
+    "sơn cản sau",
+    "sơn cửa",
+    "sơn capo",
+    "sơn cốp",
+    "sơn tai xe",
+    "sơn lazang",
+    "sơn mâm",
+    "sơn xe",
+    "gò hàn",
+    "gò nắn",
+    "làm đồng",
+    "đánh bóng sơn",
+    "đánh bóng",
+    "phủ ceramic",
+    "phủ gầm",
+    "phục hồi xe tai nạn",
+]
+
+# Danh sách Nội dung công việc phổ biến tại Gara Ô tô
 KNOWN_SERVICES = [
     "bảo dưỡng cấp lớn",
     "bảo dưỡng cấp nhỏ",
@@ -279,6 +370,7 @@ KNOWN_SERVICES = [
     "sơn xe",
     "đồng sơn",
     "gò hàn",
+    "làm đồng",
     "phục hồi xe tai nạn",
     "lắp camera hành trình",
     "lắp màn hình android",
@@ -290,39 +382,17 @@ KNOWN_SERVICES = [
     "cứu hộ",
 ]
 
-VIET_DIGITS = {
-    "không": "0",
-    "linh": "0",
-    "lẻ": "0",
-    "một": "1",
-    "mốt": "1",
-    "hai": "2",
-    "ba": "3",
-    "bốn": "4",
-    "tư": "4",
-    "năm": "5",
-    "lăm": "5",
-    "sáu": "6",
-    "bảy": "7",
-    "bẩy": "7",
-    "tám": "8",
-    "chín": "9",
-}
+SERVICE_TYPES = ["Bảo Trì & Sửa Chữa", "Đồng Sơn TM"]
+PAYMENT_METHODS = ["Chưa Thanh Toán", "Tiền Mặt", "Chuyển Khoản"]
 
 
 def parse_vietnamese_price(text: str):
     """
-    Trích xuất giá tiền từ câu nói tiếng Việt.
-    Hỗ trợ:
-      - "50 nghìn", "50 ngàn", "50k", "50 cành" -> 50000
-      - "150.000", "150,000", "150000" -> 150000
-      - "1 triệu 500 nghìn", "1 triệu rưỡi", "1,5 triệu", "1 củ rưỡi" -> 1500000
-      - "năm mươi nghìn", "hai trăm nghìn" -> 50000, 200000
+    Trích xuất Báo Giá Dịch Vụ từ câu nói tiếng Việt.
     Trả về: (price_int, matched_substring)
     """
     lower = text.lower()
 
-    # 1. Mẫu: X triệu Y (nghìn/trăm/rưỡi) (VD: "1 triệu 500 nghìn", "1 triệu rưỡi", "2 triệu 3")
     m_trieu = re.search(
         r"(\d+(?:[.,]\d+)?)\s*(?:triệu|củ|tr)\s*(rưỡi|(\d+)\s*(?:nghìn|ngàn|k|trăm)?)?",
         lower,
@@ -346,13 +416,11 @@ def parse_vietnamese_price(text: str):
                 extra_val = sub_num
         return int(base_val + extra_val), m_trieu.group(0)
 
-    # 2. Mẫu: X trăm rưỡi (VD: "1 trăm rưỡi", "2 trăm rưỡi")
     m_tram_ruoi = re.search(r"(\d+)\s*trăm\s*rưỡi", lower)
     if m_tram_ruoi:
         val = int(m_tram_ruoi.group(1)) * 100_000 + 50_000
         return val, m_tram_ruoi.group(0)
 
-    # 3. Mẫu: X nghìn / ngàn / k / cành / lít / trăm nghìn (VD: "50 nghìn", "50k", "150 ngàn", "2 lít")
     m_nghin = re.search(
         r"(\d+(?:[.,]\d+)?)\s*(trăm\s*(?:nghìn|ngàn)|nghìn|ngàn|k|cành|lít)\b",
         lower,
@@ -360,7 +428,6 @@ def parse_vietnamese_price(text: str):
     if m_nghin:
         num_raw = m_nghin.group(1)
         unit = m_nghin.group(2)
-        # Nếu viết kiểu "50.000 nghìn" thì bỏ dấu chấm
         if re.match(r"^\d{1,3}(\.\d{3})+$", num_raw):
             val = int(num_raw.replace(".", ""))
         else:
@@ -373,7 +440,6 @@ def parse_vietnamese_price(text: str):
                 val = int(num_val)
         return val, m_nghin.group(0)
 
-    # 4. Mẫu số tiền viết đầy đủ có dấu chấm/phẩy hoặc >= 10000 (VD: "50.000", "150,000", "50000 đ")
     m_full_num = re.search(
         r"\b(\d{1,3}(?:[.,]\d{3})+|\d{5,9})\s*(?:đồng|vnd|vnđ|đ)?\b", lower
     )
@@ -381,7 +447,6 @@ def parse_vietnamese_price(text: str):
         raw_digits = re.sub(r"[.,]", "", m_full_num.group(1))
         return int(raw_digits), m_full_num.group(0)
 
-    # 5. Mẫu số bằng chữ tiếng Việt cơ bản (VD: "năm mươi nghìn", "hai trăm nghìn")
     word_numbers = {
         "mười": 10,
         "hai mươi": 20,
@@ -410,15 +475,8 @@ def parse_vietnamese_price(text: str):
 def extract_license_plate(text: str):
     """
     Trích xuất và chuẩn hóa biển số xe Việt Nam.
-    Ví dụ:
-      - "51A 12345" -> "51A-12345"
-      - "51A-123.45" -> "51A-123.45" (hoặc chuẩn hóa "51A-12345")
-      - "29B1 45678" -> "29B1-45678"
-      - "30F 9876" -> "30F-9876"
     Trả về: (plate_formatted, matched_substring)
     """
-    # Loại bỏ từ khóa "biển số", "xe biển số", "bs" ở đầu để dễ bắt
-    # Mẫu chuẩn biển số VN: 2 chữ số đầu (11-99) + 1-2 chữ cái (A-Z) + (tùy chọn 1 số/chữ cho xe máy) + 4-5 chữ số cuối
     plate_pattern = re.compile(
         r"\b(\d{2})\s*[-.]?\s*([A-Za-zĐđ]{1,2}\d?)\s*[-.]?\s*(\d{3}\s*[.]?\s*\d{2}|\d{4,5})\b"
     )
@@ -435,7 +493,7 @@ def extract_license_plate(text: str):
 
 def format_price_vn(price_int: int) -> str:
     """Định dạng số nguyên 50000 -> '50.000'"""
-    if price_int is None:
+    if not price_int or int(price_int) <= 0:
         return ""
     return f"{int(price_int):,}".replace(",", ".")
 
@@ -452,14 +510,17 @@ def parse_price_input(price_val) -> int:
 
 def parse_voice_text(text: str) -> dict:
     """
-    Phân tích câu nói của nhân viên thành cấu trúc dữ liệu chuẩn 6 trường:
-      - thoi_gian (DD/MM/YYYY)
-      - bien_so (VD: 51A-12345)
-      - hang_xe (VD: Honda)
-      - dich_vu (VD: Rửa xe)
-      - gia (VD: 50000 - Không bắt buộc, có thể để trống)
-      - nguoi_phu_trach (VD: Minh, Tuấn...)
-    Đồng thời kiểm tra tính hợp lệ (Validation).
+    Phân tích câu nói của nhân viên thành cấu trúc 10 cột chuẩn của Gara Ô tô:
+      1. stt (Tự động đánh số khi lưu)
+      2. ngay (DD/MM/YYYY)
+      3. bien_so (VD: 51A-12345)
+      4. hieu_xe (VD: Mazda CX-5)
+      5. dich_vu ("Bảo Trì & Sửa Chữa" hoặc "Đồng Sơn TM")
+      6. noi_dung (VD: Thay dầu máy, bảo dưỡng phanh...)
+      7. bao_gia (Số nguyên, có thể để trống) & bao_gia_hien_thi (VD: 850.000)
+      8. thanh_toan ("Tiền Mặt" | "Chuyển Khoản" | "Chưa Thanh Toán")
+      9. nguoi_thuc_hien (VD: Minh)
+      10. ghi_chu (VD: Khách hẹn chiều lấy)
     """
     today_str = datetime.now().strftime("%d/%m/%Y")
     raw_text = (text or "").strip()
@@ -467,46 +528,101 @@ def parse_voice_text(text: str) -> dict:
     if not raw_text:
         return {
             "raw_text": "",
-            "thoi_gian": today_str,
+            "ngay": today_str,
             "bien_so": "",
-            "hang_xe": "",
-            "dich_vu": "",
-            "gia": 0,
-            "gia_hien_thi": "",
-            "nguoi_phu_trach": "",
+            "hieu_xe": "",
+            "dich_vu": "Bảo Trì & Sửa Chữa",
+            "noi_dung": "",
+            "bao_gia": 0,
+            "bao_gia_hien_thi": "",
+            "thanh_toan": "Chưa Thanh Toán",
+            "nguoi_thuc_hien": "",
+            "ghi_chu": "",
             "is_valid": False,
-            "errors": ["Vui lòng nói hoặc nhập nội dung thông tin xe."],
+            "errors": ["Vui lòng nói hoặc nhập thông tin xe."],
         }
 
     working_text = raw_text
 
-    # 1. Trích xuất Biển số xe
+    # 1. Trích xuất Ghi chú (nếu nói "ghi chú ...", "lưu ý ...", hoặc "hẹn ...")
+    ghi_chu = ""
+    m_note = re.search(
+        r"\b((?:ghi\s+chú|lưu\s+ý|khách\s+hẹn|khách\s+báo)\s*[:,-]?\s*(.+)|(?:hẹn|hẹn\s+khách)\s+(?:chiều|sáng|trưa|tối|ngày|\d+).+)$",
+        working_text,
+        flags=re.IGNORECASE,
+    )
+    if m_note:
+        raw_note = m_note.group(2) if m_note.group(2) else m_note.group(1)
+        ghi_chu = (raw_note or "").strip(" .,-")
+        if ghi_chu:
+            ghi_chu = ghi_chu[0].upper() + ghi_chu[1:]
+        working_text = working_text[: m_note.start()]
+
+    # 2. Trích xuất Biển số xe
     bien_so, matched_plate = extract_license_plate(working_text)
     if matched_plate:
         working_text = working_text.replace(matched_plate, " , ", 1)
 
-    # 2. Trích xuất Giá tiền (Không bắt buộc)
-    gia, matched_price = parse_vietnamese_price(working_text)
+    # 3. Trích xuất Báo giá dịch vụ (Không bắt buộc)
+    bao_gia, matched_price = parse_vietnamese_price(working_text)
     if matched_price:
         pattern_price = re.escape(matched_price)
         working_text = re.sub(pattern_price, " , ", working_text, count=1, flags=re.IGNORECASE)
 
-    # 3. Trích xuất Người phụ trách nếu nói kèm từ khóa (VD: "phụ trách Minh", "thợ Tuấn", "nhân viên Nam", "anh Hùng làm")
-    nguoi_phu_trach = ""
+    # 4. Trích xuất Hình thức Thanh Toán (Tiền Mặt | Chuyển Khoản | Chưa Thanh Toán)
+    thanh_toan = "Chưa Thanh Toán"
+    m_payment = re.search(
+        r"\b(chưa\s+thanh\s+toán|tiền\s+mặt|chuyển\s+khoản|nợ)\b",
+        working_text,
+        flags=re.IGNORECASE,
+    )
+    if m_payment:
+        pm_raw = m_payment.group(1).lower()
+        if "tiền mặt" in pm_raw:
+            thanh_toan = "Tiền Mặt"
+        elif "chuyển khoản" in pm_raw:
+            thanh_toan = "Chuyển Khoản"
+        else:
+            thanh_toan = "Chưa Thanh Toán"
+        working_text = re.sub(
+            r"\b(?:thanh\s+toán\s*)?" + re.escape(m_payment.group(0)) + r"\b",
+            " , ",
+            working_text,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+
+    # 5. Trích xuất Người thực hiện
+    nguoi_thuc_hien = ""
     m_staff = re.search(
-        r"\b(?:người\s+phụ\s+trách|phụ\s+trách|nhân\s+viên|thợ\s+máy|thợ|kỹ\s+thuật|do|anh|em|bạn)\s+([A-Za-zÀ-ỹ]+(?:\s+[A-Za-zÀ-ỹ]+)?)(?=\s*(?:[,.;]|làm|$))",
+        r"\b(?:người\s+thực\s+hiện|thực\s+hiện|người\s+phụ\s+trách|phụ\s+trách|nhân\s+viên|thợ\s+máy|thợ|kỹ\s+thuật|do|anh|em|bạn)\s+([A-Za-zÀ-ỹ]+(?:\s+[A-Za-zÀ-ỹ]+)?)(?=\s*(?:[,.;]|làm|$))",
         working_text,
         flags=re.IGNORECASE,
     )
     if m_staff:
         candidate = m_staff.group(1).strip()
+        candidate = re.sub(r"\s+(?:làm|phụ\s+trách|thực\s+hiện)$", "", candidate, flags=re.IGNORECASE).strip()
         if candidate.lower() not in KNOWN_BRANDS and not any(
             srv in candidate.lower() for srv in KNOWN_SERVICES
         ):
-            nguoi_phu_trach = candidate.title()
+            nguoi_thuc_hien = candidate.title()
             working_text = working_text.replace(m_staff.group(0), " , ", 1)
 
-    # 4. Dọn các từ nối thừa ở đầu như "Xe ô tô", "Xe biển số", "biển số", "xe", "giá", "hết", "tổng"
+    # 6. Nhận diện nhóm Dịch vụ ("Bảo Trì & Sửa Chữa" vs "Đồng Sơn TM")
+    dich_vu = "Bảo Trì & Sửa Chữa"
+    lower_raw = raw_text.lower()
+    if any(ds_kw in lower_raw for ds_kw in DONG_SON_KEYWORDS):
+        dich_vu = "Đồng Sơn TM"
+
+    # Nếu nhân viên đọc rõ tên nhóm dịch vụ ("đồng sơn thương mại", "đồng sơn tm", "bảo trì sửa chữa") thì xóa khỏi phần Nội dung
+    working_text = re.sub(
+        r"\b(bảo\s+trì\s*(?:và|&)?\s*sửa\s+chữa|đồng\s+sơn\s+thương\s+mại|đồng\s+sơn\s+tm)\b",
+        " , ",
+        working_text,
+        flags=re.IGNORECASE,
+    )
+
+    # 7. Dọn các từ nối thừa
     working_text = re.sub(
         r"^\s*(?:xe\s+ô\s+tô|ô\s+tô|xe)\b",
         " ",
@@ -514,56 +630,51 @@ def parse_voice_text(text: str) -> dict:
         flags=re.IGNORECASE,
     )
     working_text = re.sub(
-        r"\b(xe\s+biển\s+số|biển\s+số\s+xe|biển\s+số|biển|hãng\s+xe|dòng\s+xe|loại\s+xe|hãng|dịch\s+vụ|làm\s+dịch\s+vụ|giá\s+tiền|giá|hết\s+tổng|tổng\s+cộng|hết|đồng|vnđ|vnd|người\s+phụ\s+trách|phụ\s+trách)\b",
+        r"\b(xe\s+biển\s+số|biển\s+số\s+xe|biển\s+số|biển|hiệu\s+xe|hãng\s+xe|dòng\s+xe|loại\s+xe|hãng|nội\s+dung|làm\s+dịch\s+vụ|dịch\s+vụ|báo\s+giá\s+dịch\s+vụ|báo\s+giá|giá\s+tiền|giá|thanh\s+toán|hết\s+tổng|tổng\s+cộng|hết|đồng|vnđ|vnd|người\s+thực\s+hiện|người\s+phụ\s+trách|phụ\s+trách|thực\s+hiện)\b",
         " ",
         working_text,
         flags=re.IGNORECASE,
     )
 
-    # 5. Trích xuất Hãng xe & Dịch vụ
-    hang_xe = ""
-    dich_vu = ""
+    # 8. Trích xuất Hiệu Xe & Nội Dung
+    hieu_xe = ""
+    noi_dung = ""
 
     lower_working = working_text.lower()
-
-    # Tìm hãng xe trong danh sách KNOWN_BRANDS trước
     for brand_key, brand_name in sorted(KNOWN_BRANDS.items(), key=lambda x: -len(x[0])):
         pattern = rf"\b{re.escape(brand_key)}\b"
         m_brand = re.search(pattern, lower_working)
         if m_brand:
-            hang_xe = brand_name
+            hieu_xe = brand_name
             working_text = re.sub(pattern, " , ", working_text, count=1, flags=re.IGNORECASE)
             break
 
-    # Tìm dịch vụ và người phụ trách từ các phần còn lại ngăn cách bởi dấu phẩy
     remaining_parts = [
         p.strip(" .,-:;!?") for p in re.split(r"[,;]+", working_text) if p.strip(" .,-:;!?")
     ]
 
-    if not hang_xe and len(remaining_parts) >= 2:
+    if not hieu_xe and len(remaining_parts) >= 2:
         first_part_lower = remaining_parts[0].lower()
         is_first_service = any(srv in first_part_lower for srv in KNOWN_SERVICES)
         if not is_first_service:
-            hang_xe = remaining_parts[0].title()
+            hieu_xe = remaining_parts[0].title()
             remaining_parts = remaining_parts[1:]
 
-    # Nếu chưa bắt được người phụ trách bằng từ khóa, nhưng phần cuối cùng sau dấu phẩy là tên riêng ngắn (1-3 từ, không phải dịch vụ)
-    if not nguoi_phu_trach and len(remaining_parts) >= 2:
+    if not nguoi_thuc_hien and len(remaining_parts) >= 2:
         last_part = remaining_parts[-1].strip()
         last_lower = last_part.lower()
         is_last_service = any(srv in last_lower for srv in KNOWN_SERVICES)
         if not is_last_service and 1 <= len(last_part.split()) <= 3:
-            nguoi_phu_trach = last_part.title()
+            nguoi_thuc_hien = last_part.title()
             remaining_parts = remaining_parts[:-1]
 
     if remaining_parts:
-        dich_vu_raw = ", ".join(remaining_parts)
-        dich_vu_raw = re.sub(r"\s+", " ", dich_vu_raw).strip(" .,-")
-        if dich_vu_raw:
-            dich_vu = dich_vu_raw[0].upper() + dich_vu_raw[1:]
+        noi_dung_raw = ", ".join(remaining_parts)
+        noi_dung_raw = re.sub(r"\s+", " ", noi_dung_raw).strip(" .,-")
+        if noi_dung_raw:
+            noi_dung = noi_dung_raw[0].upper() + noi_dung_raw[1:]
 
-    # Fallback: Nếu vẫn chưa có dịch vụ, quét trong câu gốc theo KNOWN_SERVICES
-    if not dich_vu:
+    if not noi_dung:
         found_services = []
         temp_lower = raw_text.lower()
         for srv in KNOWN_SERVICES:
@@ -571,26 +682,33 @@ def parse_voice_text(text: str) -> dict:
                 found_services.append(srv.capitalize())
                 temp_lower = temp_lower.replace(srv, " ")
         if found_services:
-            dich_vu = ", ".join(found_services)
+            noi_dung = ", ".join(found_services)
 
-    # 6. Kiểm tra tính hợp lệ (Giá tiền và Người phụ trách không bắt buộc, Giá có thể để trống)
+    # Kiểm tra lại nếu Nội dung thuộc nhóm Đồng Sơn
+    if any(ds_kw in (noi_dung or "").lower() for ds_kw in DONG_SON_KEYWORDS):
+        dich_vu = "Đồng Sơn TM"
+
+    # 9. Kiểm tra tính hợp lệ (Báo giá, Người thực hiện, Ghi chú không bắt buộc)
     errors = []
     if not bien_so:
-        errors.append("Chưa nhận diện được Biển số xe (VD: 51A-12345).")
-    if not hang_xe:
-        errors.append("Chưa nhận diện được Hãng xe (VD: Honda, Toyota...).")
-    if not dich_vu:
-        errors.append("Chưa nhận diện được Dịch vụ (VD: Rửa xe, Thay nhớt...).")
+        errors.append("Chưa nhận diện được Biển Số (VD: 51A-12345).")
+    if not hieu_xe:
+        errors.append("Chưa nhận diện được Hiệu Xe (VD: Mazda CX-5, Toyota Vios...).")
+    if not noi_dung:
+        errors.append("Chưa nhận diện được Nội Dung công việc (VD: Thay dầu máy, Sơn cản...).")
 
     return {
         "raw_text": raw_text,
-        "thoi_gian": today_str,
+        "ngay": today_str,
         "bien_so": bien_so or "",
-        "hang_xe": hang_xe or "",
-        "dich_vu": dich_vu or "",
-        "gia": gia or 0,
-        "gia_hien_thi": format_price_vn(gia) if (gia and gia > 0) else "",
-        "nguoi_phu_trach": nguoi_phu_trach or "",
+        "hieu_xe": hieu_xe or "",
+        "dich_vu": dich_vu,
+        "noi_dung": noi_dung or "",
+        "bao_gia": bao_gia or 0,
+        "bao_gia_hien_thi": format_price_vn(bao_gia) if (bao_gia and bao_gia > 0) else "",
+        "thanh_toan": thanh_toan,
+        "nguoi_thuc_hien": nguoi_thuc_hien or "",
+        "ghi_chu": ghi_chu or "",
         "is_valid": len(errors) == 0,
         "errors": errors,
     }
@@ -598,44 +716,57 @@ def parse_voice_text(text: str) -> dict:
 
 def validate_record(data: dict) -> tuple[bool, list[str], dict]:
     """
-    Kiểm tra tính hợp lệ của dữ liệu trước khi ghi vào file Excel.
-    Giá tiền có thể để trống (không bắt buộc).
+    Kiểm tra tính hợp lệ và chuẩn hóa 10 trường trước khi lưu vào Excel & Google Drive.
     """
-    thoi_gian = (data.get("thoi_gian") or datetime.now().strftime("%d/%m/%Y")).strip()
+    ngay = (data.get("ngay") or data.get("thoi_gian") or datetime.now().strftime("%d/%m/%Y")).strip()
     bien_so = (data.get("bien_so") or "").strip().upper()
-    hang_xe = (data.get("hang_xe") or "").strip()
-    dich_vu = (data.get("dich_vu") or "").strip()
-    nguoi_phu_trach = (data.get("nguoi_phu_trach") or "").strip()
-    gia_int = parse_price_input(data.get("gia"))
+    hieu_xe = (data.get("hieu_xe") or data.get("hang_xe") or "").strip()
+    dich_vu = (data.get("dich_vu") or "Bảo Trì & Sửa Chữa").strip()
+    noi_dung = (data.get("noi_dung") or "").strip()
+    bao_gia_int = parse_price_input(data.get("bao_gia") if "bao_gia" in data else data.get("gia"))
+    thanh_toan = (data.get("thanh_toan") or "Chưa Thanh Toán").strip()
+    nguoi_thuc_hien = (data.get("nguoi_thuc_hien") or data.get("nguoi_phu_trach") or "").strip()
+    ghi_chu = (data.get("ghi_chu") or "").strip()
 
     extracted_plate, _ = extract_license_plate(bien_so)
     if extracted_plate:
         bien_so = extracted_plate
 
-    if hang_xe:
-        hang_xe = hang_xe[0].upper() + hang_xe[1:]
-    if dich_vu:
-        dich_vu = dich_vu[0].upper() + dich_vu[1:]
-    if nguoi_phu_trach:
-        nguoi_phu_trach = nguoi_phu_trach.title()
+    if hieu_xe:
+        hieu_xe = hieu_xe[0].upper() + hieu_xe[1:]
+    if noi_dung:
+        noi_dung = noi_dung[0].upper() + noi_dung[1:]
+    if nguoi_thuc_hien:
+        nguoi_thuc_hien = nguoi_thuc_hien.title()
+    if dich_vu not in SERVICE_TYPES:
+        dich_vu = "Đồng Sơn TM" if "đồng sơn" in dich_vu.lower() else "Bảo Trì & Sửa Chữa"
+    if thanh_toan not in PAYMENT_METHODS:
+        if "tiền mặt" in thanh_toan.lower():
+            thanh_toan = "Tiền Mặt"
+        elif "chuyển khoản" in thanh_toan.lower():
+            thanh_toan = "Chuyển Khoản"
+        else:
+            thanh_toan = "Chưa Thanh Toán"
 
     errors = []
     if not bien_so:
-        errors.append("Biển số không được để trống.")
-    if not hang_xe:
-        errors.append("Hãng xe không được để trống.")
-    if not dich_vu:
-        errors.append("Dịch vụ không được để trống.")
+        errors.append("Biển Số không được để trống.")
+    if not hieu_xe:
+        errors.append("Hiệu Xe không được để trống.")
+    if not noi_dung:
+        errors.append("Nội Dung công việc không được để trống.")
 
     cleaned = {
-        "thoi_gian": thoi_gian,
+        "ngay": ngay,
         "bien_so": bien_so,
-        "hang_xe": hang_xe,
+        "hieu_xe": hieu_xe,
         "dich_vu": dich_vu,
-        "gia": gia_int if gia_int > 0 else 0,
-        "gia_hien_thi": format_price_vn(gia_int) if gia_int > 0 else "",
-        "nguoi_phu_trach": nguoi_phu_trach,
+        "noi_dung": noi_dung,
+        "bao_gia": bao_gia_int if bao_gia_int > 0 else 0,
+        "bao_gia_hien_thi": format_price_vn(bao_gia_int) if bao_gia_int > 0 else "",
+        "thanh_toan": thanh_toan,
+        "nguoi_thuc_hien": nguoi_thuc_hien,
+        "ghi_chu": ghi_chu,
     }
 
     return (len(errors) == 0), errors, cleaned
-

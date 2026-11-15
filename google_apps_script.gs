@@ -1,21 +1,30 @@
 /**
  * GOOGLE APPS SCRIPT — TỰ ĐỘNG LƯU DỮ LIỆU GARA THEO TỪNG THÁNG TRÊN GOOGLE DRIVE
+ * 10 CỘT CHUẨN: STT | Ngày | Biển Số | Hiệu Xe | Dịch vụ | Nội Dung | Báo Giá Dịch Vụ | Thanh Toán | Người Thực Hiện | Ghi Chú
  *
- * HƯỚNG DẪN CÀI ĐẶT (CHỈ MẤT 1 PHÚT):
- * 1. Truy cập https://script.google.com -> Bấm "Dự án mới" (New project).
+ * HƯỚNG DẪN CÀI ĐẶT / CẬP NHẬT:
+ * 1. Truy cập https://script.google.com -> Mở dự án Gara của bạn.
  * 2. Xóa toàn bộ mã cũ và dán toàn bộ nội dung file này vào.
- * 3. Bấm nút "Triển khai" (Deploy) ở góc phải trên -> Chọn "Tùy chọn triển khai mới" (New deployment).
- * 4. Ở mục "Chọn loại" (bánh răng) -> Chọn "Ứng dụng web" (Web app):
- *    - Thực thi dưới dạng (Execute as): "Tôi" (Me)
- *    - Ai có quyền truy cập (Who has access): Chọn "Bất kỳ ai" (Anyone)
- * 5. Bấm "Triển khai" (Deploy) -> Cấp quyền truy cập Google Drive -> Copy đường link "URL ứng dụng web" (kết thúc bằng /exec).
- * 6. Dán đường link đó vào phần Cài đặt Google Drive trên giao diện Web Gara Voice (hoặc biến môi trường DRIVE_WEBHOOK_URL).
+ * 3. Bấm nút "Triển khai" (Deploy) ở góc phải trên -> "Quản lý bản triển khai" (Manage deployments).
+ * 4. Bấm biểu tượng cây bút (Chỉnh sửa) -> Chọn "Phiên bản mới" (New version) -> Bấm "Triển khai" (Deploy).
+ * 5. Giữ nguyên URL Webhook (hoặc copy lại nếu tạo bản mới) để hệ thống tự động ghi 10 cột lên Google Sheets.
  */
 
 const FOLDER_NAME = "Gara_Data";
-const HEADERS = ["Thời gian", "Biển số", "Hãng xe", "Dịch vụ", "Giá", "Người phụ trách"];
+const HEADERS = [
+  "STT",
+  "Ngày",
+  "Biển Số",
+  "Hiệu Xe",
+  "Dịch vụ",
+  "Nội Dung",
+  "Báo Giá Dịch Vụ",
+  "Thanh Toán",
+  "Người Thực Hiện",
+  "Ghi Chú"
+];
 
-// Điền link Render của bạn vào đây (VD: "https://gara-xxxx.onrender.com") để tự động giữ Server thức 24/24
+// Điền link Render của bạn vào đây (VD: "https://gara.onrender.com") để tự động giữ Server thức 24/24
 const RENDER_APP_URL = "https://gara.onrender.com";
 
 function getOrCreateFolder() {
@@ -24,6 +33,30 @@ function getOrCreateFolder() {
     return folders.next();
   }
   return DriveApp.createFolder(FOLDER_NAME);
+}
+
+function applyHeaderStyling(sheet) {
+  const headerRange = sheet.getRange(1, 1, 1, HEADERS.length);
+  headerRange.setValues([HEADERS]);
+  headerRange.setBackground("#1E40AF");
+  headerRange.setFontColor("#FFFFFF");
+  headerRange.setFontWeight("bold");
+  headerRange.setHorizontalAlignment("center");
+  headerRange.setVerticalAlignment("middle");
+  sheet.setFrozenRows(1);
+  sheet.setRowHeight(1, 32);
+
+  // Cài đặt độ rộng tối ưu cho 10 cột
+  sheet.setColumnWidth(1, 55);   // STT
+  sheet.setColumnWidth(2, 105);  // Ngày
+  sheet.setColumnWidth(3, 120);  // Biển Số
+  sheet.setColumnWidth(4, 135);  // Hiệu Xe
+  sheet.setColumnWidth(5, 160);  // Dịch vụ
+  sheet.setColumnWidth(6, 240);  // Nội Dung
+  sheet.setColumnWidth(7, 130);  // Báo Giá Dịch Vụ
+  sheet.setColumnWidth(8, 130);  // Thanh Toán
+  sheet.setColumnWidth(9, 130);  // Người Thực Hiện
+  sheet.setColumnWidth(10, 180); // Ghi Chú
 }
 
 function getOrCreateMonthlySheet(monthKey) {
@@ -37,15 +70,9 @@ function getOrCreateMonthlySheet(monthKey) {
     const file = files.next();
     ss = SpreadsheetApp.open(file);
     const sheet = ss.getActiveSheet();
-    // Tự động bổ sung cột thứ 6 "Người phụ trách" nếu file cũ mới chỉ có 5 cột
-    if (sheet.getLastColumn() < HEADERS.length || sheet.getRange(1, 6).getValue() !== "Người phụ trách") {
-      sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
-      const headerRange = sheet.getRange(1, 1, 1, HEADERS.length);
-      headerRange.setBackground("#1E40AF");
-      headerRange.setFontColor("#FFFFFF");
-      headerRange.setFontWeight("bold");
-      headerRange.setHorizontalAlignment("center");
-      sheet.setColumnWidth(6, 150);
+    // Tự động nâng cấp lên 10 cột chuẩn nếu file cũ chưa đủ
+    if (sheet.getLastColumn() < HEADERS.length || sheet.getRange(1, 1).getValue() !== "STT") {
+      applyHeaderStyling(sheet);
     }
   } else {
     ss = SpreadsheetApp.create(fileName);
@@ -55,21 +82,7 @@ function getOrCreateMonthlySheet(monthKey) {
 
     const sheet = ss.getActiveSheet();
     sheet.setName("Thang_" + mk);
-    sheet.appendRow(HEADERS);
-
-    // Định dạng dòng tiêu đề đẹp mắt
-    const headerRange = sheet.getRange(1, 1, 1, HEADERS.length);
-    headerRange.setBackground("#1E40AF");
-    headerRange.setFontColor("#FFFFFF");
-    headerRange.setFontWeight("bold");
-    headerRange.setHorizontalAlignment("center");
-    sheet.setFrozenRows(1);
-    sheet.setColumnWidth(1, 120);
-    sheet.setColumnWidth(2, 130);
-    sheet.setColumnWidth(3, 130);
-    sheet.setColumnWidth(4, 210);
-    sheet.setColumnWidth(5, 120);
-    sheet.setColumnWidth(6, 150);
+    applyHeaderStyling(sheet);
   }
 
   return ss;
@@ -102,19 +115,29 @@ function readRecordsFromSheet(ss, monthKey) {
   const records = [];
 
   if (lastRow >= 2) {
-    const values = sheet.getRange(2, 1, lastRow - 1, 6).getDisplayValues();
+    const numCols = Math.max(sheet.getLastColumn(), HEADERS.length);
+    const values = sheet.getRange(2, 1, lastRow - 1, numCols).getDisplayValues();
     for (let i = 0; i < values.length; i++) {
       const row = values[i];
-      if (!row[0] && !row[1] && !row[2] && !row[3] && !row[4] && !row[5]) continue;
+      if (!row[1] && !row[2] && !row[3] && !row[5]) continue;
       records.push({
         row_id: i + 2,
+        stt: row[0] || (i + 1),
         month_key: monthKey,
-        thoi_gian: row[0],
-        bien_so: row[1],
-        hang_xe: row[2],
-        dich_vu: row[3],
-        gia: row[4],
-        nguoi_phu_trach: row[5] || ""
+        ngay: row[1] || "",
+        bien_so: row[2] || "",
+        hieu_xe: row[3] || "",
+        dich_vu: row[4] || "Bảo Trì & Sửa Chữa",
+        noi_dung: row[5] || "",
+        bao_gia: row[6] || "",
+        thanh_toan: row[7] || "Chưa Thanh Toán",
+        nguoi_thuc_hien: row[8] || "",
+        ghi_chu: row[9] || "",
+        // Tương thích ngược:
+        thoi_gian: row[1] || "",
+        hang_xe: row[3] || "",
+        gia: row[6] || "",
+        nguoi_phu_trach: row[8] || ""
       });
     }
   }
@@ -138,19 +161,44 @@ function doGet(e) {
     const ss = getOrCreateMonthlySheet(monthKey);
     const sheet = ss.getActiveSheet();
 
-    // Hỗ trợ thêm dòng hoặc xóa dòng ngay cả khi HTTP Redirect 302 chuyển POST thành GET
+    // Hỗ trợ thêm bản ghi ngay cả khi HTTP Redirect 302 chuyển POST thành GET
     if (action === "append" && params.bien_so) {
+      const lastRow = sheet.getLastRow();
+      const stt = params.stt || (lastRow >= 1 ? lastRow : 1);
+      const ngay = params.ngay || params.thoi_gian || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy");
+      const bienSo = (params.bien_so || "").toUpperCase();
+      const hieuXe = params.hieu_xe || params.hang_xe || "";
+      const dichVu = params.dich_vu || "Bảo Trì & Sửa Chữa";
+      const noiDung = params.noi_dung || "";
+      const baoGia = params.bao_gia || params.gia || "";
+      const thanhToan = params.thanh_toan || "Chưa Thanh Toán";
+      const nguoiThucHien = params.nguoi_thuc_hien || params.nguoi_phu_trach || "";
+      const ghiChu = params.ghi_chu || "";
+
       sheet.appendRow([
-        params.thoi_gian || "",
-        params.bien_so || "",
-        params.hang_xe || "",
-        params.dich_vu || "",
-        params.gia || "",
-        params.nguoi_phu_trach || ""
+        stt,
+        ngay,
+        bienSo,
+        hieuXe,
+        dichVu,
+        noiDung,
+        baoGia,
+        thanhToan,
+        nguoiThucHien,
+        ghiChu
       ]);
+
+      const newRow = sheet.getLastRow();
+      sheet.getRange(newRow, 1).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 2).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 3).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 5).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 7).setHorizontalAlignment("right");
+      sheet.getRange(newRow, 8).setHorizontalAlignment("center");
+
       return jsonResponse({
         success: true,
-        row_id: sheet.getLastRow(),
+        row_id: newRow,
         file_url: ss.getUrl(),
         folder_url: getOrCreateFolder().getUrl()
       });
@@ -160,6 +208,10 @@ function doGet(e) {
       const rowId = parseInt(params.row_id, 10);
       if (rowId >= 2 && rowId <= sheet.getLastRow()) {
         sheet.deleteRow(rowId);
+        // Tái lập lại STT 1..N
+        for (let r = 2; r <= sheet.getLastRow(); r++) {
+          sheet.getRange(r, 1).setValue(r - 1);
+        }
         return jsonResponse({ success: true, file_url: ss.getUrl() });
       }
       return jsonResponse({ success: false, error: "Row out of bounds" });
@@ -188,16 +240,40 @@ function doPost(e) {
     const sheet = ss.getActiveSheet();
 
     if (action === "append") {
-      const rec = body.record || {};
+      const rec = body.record || body;
+      const lastRow = sheet.getLastRow();
+      const stt = rec.stt || (lastRow >= 1 ? lastRow : 1);
+      const ngay = rec.ngay || rec.thoi_gian || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy");
+      const bienSo = (rec.bien_so || "").toUpperCase();
+      const hieuXe = rec.hieu_xe || rec.hang_xe || "";
+      const dichVu = rec.dich_vu || "Bảo Trì & Sửa Chữa";
+      const noiDung = rec.noi_dung || "";
+      const baoGia = rec.bao_gia || rec.gia || "";
+      const thanhToan = rec.thanh_toan || "Chưa Thanh Toán";
+      const nguoiThucHien = rec.nguoi_thuc_hien || rec.nguoi_phu_trach || "";
+      const ghiChu = rec.ghi_chu || "";
+
       sheet.appendRow([
-        rec.thoi_gian || "",
-        rec.bien_so || "",
-        rec.hang_xe || "",
-        rec.dich_vu || "",
-        rec.gia || "",
-        rec.nguoi_phu_trach || ""
+        stt,
+        ngay,
+        bienSo,
+        hieuXe,
+        dichVu,
+        noiDung,
+        baoGia,
+        thanhToan,
+        nguoiThucHien,
+        ghiChu
       ]);
+
       const newRow = sheet.getLastRow();
+      sheet.getRange(newRow, 1).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 2).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 3).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 5).setHorizontalAlignment("center");
+      sheet.getRange(newRow, 7).setHorizontalAlignment("right");
+      sheet.getRange(newRow, 8).setHorizontalAlignment("center");
+
       return jsonResponse({
         success: true,
         row_id: newRow,
@@ -210,6 +286,9 @@ function doPost(e) {
       const rowId = parseInt(body.row_id, 10);
       if (rowId >= 2 && rowId <= sheet.getLastRow()) {
         sheet.deleteRow(rowId);
+        for (let r = 2; r <= sheet.getLastRow(); r++) {
+          sheet.getRange(r, 1).setValue(r - 1);
+        }
         return jsonResponse({ success: true, file_url: ss.getUrl() });
       }
       return jsonResponse({ success: false, error: "Row out of bounds" });
@@ -232,12 +311,7 @@ function jsonResponse(obj) {
 
 /**
  * CHỐNG NGỦ ĐÔNG TRÊN RENDER FREE (KEEP-ALIVE 24/24):
- * Hàm này sẽ gọi nhẹ vào cổng /health trên Render mỗi 10 phút.
- *
- * CÁCH BẬT TỰ ĐỘNG (CHỈ CẦN CHẠY 1 LẦN DUY NHẤT):
- * 1. Sửa lại hằng số RENDER_APP_URL ở dòng 19 thành đúng đường link Render của bạn.
- * 2. Trên thanh công cụ Google Apps Script (cạnh nút "Chạy / Run"), chọn hàm "setupKeepAliveTrigger" trong menu thả xuống.
- * 3. Bấm nút "Chạy" (Run) -> Google sẽ tự động tạo bộ hẹn giờ chạy hàm keepRenderAwake mỗi 10 phút 1 lần mãi mãi!
+ * Tự động ping vào /health mỗi 10 phút để Web Gara luôn thức 24/24.
  */
 function keepRenderAwake() {
   const baseUrl = (RENDER_APP_URL || "").trim().replace(/\/+$/, "");
@@ -254,18 +328,15 @@ function keepRenderAwake() {
 }
 
 function setupKeepAliveTrigger() {
-  // Xóa các trigger cũ trùng tên (nếu có) để tránh tạo trùng lặp
   const triggers = ScriptApp.getProjectTriggers();
   for (let i = 0; i < triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === "keepRenderAwake") {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
-  // Tạo bộ hẹn giờ tự động gọi keepRenderAwake mỗi 10 phút
   ScriptApp.newTrigger("keepRenderAwake")
     .timeBased()
     .everyMinutes(10)
     .create();
   Logger.log("Đã bật chế độ giữ Server Render thức 24/24 (Ping mỗi 10 phút)!");
 }
-
