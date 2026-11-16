@@ -27,12 +27,27 @@ const HEADERS = [
 // Điền link Render của bạn vào đây (VD: "https://gara.onrender.com") để tự động giữ Server thức 24/24
 const RENDER_APP_URL = "https://gara.onrender.com";
 
+// Cache ID/URL thư mục 6 giờ để không phải tìm lại thư mục ở mỗi lần gọi
 function getOrCreateFolder() {
-  const folders = DriveApp.getFoldersByName(FOLDER_NAME);
-  if (folders.hasNext()) {
-    return folders.next();
+  const cache = CacheService.getScriptCache();
+  const cachedId = cache.get("folder_id");
+  if (cachedId) {
+    try {
+      return DriveApp.getFolderById(cachedId);
+    } catch (err) {
+      // thư mục đã đổi -> tìm lại bên dưới
+    }
   }
-  return DriveApp.createFolder(FOLDER_NAME);
+  const folders = DriveApp.getFoldersByName(FOLDER_NAME);
+  const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(FOLDER_NAME);
+  cache.put("folder_id", folder.getId(), 21600);
+  cache.put("folder_url", folder.getUrl(), 21600);
+  return folder;
+}
+
+function getFolderUrl() {
+  const cached = CacheService.getScriptCache().get("folder_url");
+  return cached || getOrCreateFolder().getUrl();
 }
 
 function applyHeaderStyling(sheet) {
@@ -74,14 +89,10 @@ function appendRowAsText(sheet, values) {
   return row;
 }
 
-// Căn lề 1 dòng dữ liệu vừa thêm / vừa sửa
+// Căn lề 1 dòng dữ liệu vừa thêm (gộp thành 2 lệnh thay vì 6)
 function styleDataRow(sheet, row) {
-  sheet.getRange(row, 1).setHorizontalAlignment("center");
-  sheet.getRange(row, 2).setHorizontalAlignment("center");
-  sheet.getRange(row, 3).setHorizontalAlignment("center");
-  sheet.getRange(row, 5).setHorizontalAlignment("center");
+  sheet.getRangeList(["A" + row, "B" + row, "C" + row, "E" + row, "H" + row]).setHorizontalAlignment("center");
   sheet.getRange(row, 7).setHorizontalAlignment("right");
-  sheet.getRange(row, 8).setHorizontalAlignment("center");
 }
 
 const ID_COL = 11;          // Cột ID ẩn (mã duy nhất của mỗi bản ghi)
@@ -96,7 +107,9 @@ function ensureIdColumn(sheet) {
   if (sheet.getRange(1, ID_COL).getValue() !== ID_HEADER) {
     sheet.getRange(1, ID_COL).setValue(ID_HEADER);
   }
-  sheet.hideColumns(ID_COL);
+  if (!sheet.isColumnHiddenByUser(ID_COL)) {
+    sheet.hideColumns(ID_COL);
+  }
 }
 
 // Gán ID cho các dòng cũ chưa có ID
@@ -151,6 +164,17 @@ function withLock(fn) {
 
 function getOrCreateMonthlySheet(monthKey) {
   const mk = monthKey || Utilities.formatDate(new Date(), "GMT+7", "MM_yyyy");
+
+  // Đường nhanh: đã từng kiểm tra bảng tháng này -> mở thẳng bằng ID, bỏ qua duyệt thư mục
+  const cachedId = CacheService.getScriptCache().get("ss_" + mk);
+  if (cachedId) {
+    try {
+      return SpreadsheetApp.openById(cachedId);
+    } catch (err) {
+      // cache hỏng -> tìm lại bên dưới
+    }
+  }
+
   const fileName = "gara_" + mk;
   const folder = getOrCreateFolder();
   const files = folder.getFilesByName(fileName);
@@ -176,7 +200,31 @@ function getOrCreateMonthlySheet(monthKey) {
   }
 
   ensureIdColumn(ss.getActiveSheet());
+  CacheService.getScriptCache().put("ss_" + mk, ss.getId(), 3600);
   return ss;
+}
+
+// Đường đọc nhanh: bảng tháng đã có sẵn và đủ ID -> đọc ngay, không cần khóa / duyệt thư mục
+function tryFastList(monthKey) {
+  const id = CacheService.getScriptCache().get("ss_" + monthKey);
+  if (!id) return null;
+  let ss;
+  try {
+    ss = SpreadsheetApp.openById(id);
+  } catch (err) {
+    return null;
+  }
+  const sheet = ss.getActiveSheet();
+  if (sheet.getRange(1, ID_COL).getValue() !== ID_HEADER) return null;
+  const records = readRecordsFromSheet(ss, monthKey);
+  if (records.some(function (r) { return !r.id; })) return null;
+  return jsonResponse({
+    success: true,
+    month_key: monthKey,
+    file_url: ss.getUrl(),
+    folder_url: getFolderUrl(),
+    records: records
+  });
 }
 
 function listAvailableMonths() {
@@ -241,8 +289,13 @@ function doGet(e) {
       return jsonResponse({
         success: true,
         months: listAvailableMonths(),
-        folder_url: getOrCreateFolder().getUrl()
+        folder_url: getFolderUrl()
       });
+    }
+
+    if (action === "list") {
+      const fast = tryFastList(monthKey);
+      if (fast) return fast;
     }
 
     return withLock(function () {
@@ -264,7 +317,7 @@ function doGet(e) {
             row_id: existing,
             stt: sheet.getRange(existing, 1).getValue(),
             file_url: fileUrl,
-            folder_url: getOrCreateFolder().getUrl()
+            folder_url: getFolderUrl()
           });
         }
 
@@ -291,13 +344,12 @@ function doGet(e) {
           row_id: newRow,
           stt: stt,
           file_url: fileUrl,
-          folder_url: getOrCreateFolder().getUrl()
+          folder_url: getFolderUrl()
         });
       }
 
       // SỬA / XÓA: tìm dòng theo ID (không phụ thuộc số dòng)
       if (action === "update" || action === "delete") {
-        ensureIds(sheet);
         const row = findRowById(sheet, params.id);
         if (row < 2) {
           return jsonResponse({ success: false, not_found: true, error: "Không tìm thấy bản ghi (có thể đã bị xóa)." });
@@ -317,7 +369,6 @@ function doGet(e) {
             params.nguoi_thuc_hien || "",
             params.ghi_chu || ""
           ]]);
-          styleDataRow(sheet, row);
           return jsonResponse({ success: true, id: params.id, file_url: fileUrl });
         }
 
@@ -332,8 +383,7 @@ function doGet(e) {
         success: true,
         month_key: monthKey,
         file_url: fileUrl,
-        folder_url: getOrCreateFolder().getUrl(),
-        months: listAvailableMonths(),
+        folder_url: getFolderUrl(),
         records: readRecordsFromSheet(ss, monthKey)
       });
     });

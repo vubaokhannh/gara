@@ -8,6 +8,7 @@ Mỗi bản ghi có `id` duy nhất để sửa / xóa chính xác.
 import os
 import re
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from parser import format_price_vn, parse_price_input
 from excel_manager import (
@@ -22,6 +23,7 @@ from drive_sync import (
     DriveError,
     drive_configured,
     drive_fetch_month,
+    drive_months,
     drive_append,
     drive_update,
     drive_delete,
@@ -75,20 +77,27 @@ def get_records(month_param: str = "") -> dict:
     """Trả về {month_key, filename, records (mới nhất trước), months}."""
     mk = get_month_key_from_date(month_param)
     if using_drive():
-        try:
-            data = drive_fetch_month(mk)
-        except DriveError as e:
-            raise StorageError(str(e)) from e
+        # Lấy dữ liệu tháng và danh sách tháng SONG SONG (khi chưa có cache, đỡ phải chờ nối tiếp 2 lần)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            months_future = pool.submit(drive_months)
+            try:
+                data, stale = drive_fetch_month(mk)
+            except DriveError as e:
+                raise StorageError(str(e)) from e
+            try:
+                raw_months = months_future.result()
+            except DriveError:
+                raw_months = []  # danh sách tháng lỗi không được chặn việc xem dữ liệu
         records = [_shape(r, mk) for r in data.get("records", [])]
         records.reverse()
         months = [
             {"month_key": m["month_key"], "label": m["label"], "filename": m.get("filename", "")}
-            for m in data.get("months", [])
+            for m in raw_months
         ]
         months.sort(key=lambda m: (m["month_key"][3:], m["month_key"][:2]), reverse=True)
         if mk not in {m["month_key"] for m in months}:
             months.insert(0, {"month_key": mk, "label": f"Tháng {mk[:2]}/{mk[3:]}", "filename": f"gara_{mk}.xlsx"})
-        return {"month_key": mk, "filename": f"gara_{mk}.xlsx", "records": records, "months": months}
+        return {"month_key": mk, "filename": f"gara_{mk}.xlsx", "records": records, "months": months, "stale": stale}
 
     mk, filename, records = read_all_records(mk)
     for r in records:

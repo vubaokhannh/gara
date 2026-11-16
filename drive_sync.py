@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
-import urllib.request
-import urllib.parse
+import requests
 import threading
 import time
 
@@ -76,7 +75,14 @@ OUTDATED_SCRIPT_MSG = (
 )
 
 
+# Dùng lại kết nối TLS tới Google giữa các lần gọi (tiết kiệm ~0.3-0.6s mỗi lần)
+_session = requests.Session()
+
 CACHE_TTL_SECONDS = 30
+MAX_STALE_SECONDS = 600
+_refreshing: set = set()
+MONTHS_TTL_SECONDS = 600
+_months_cache: dict = {}
 _cache: dict = {}
 _cache_lock = threading.Lock()
 
@@ -87,16 +93,12 @@ def _call_apps_script(webhook_url: str, params: dict, retries: int = 2) -> dict:
     Mọi thao tác đều an toàn khi gọi lại (thêm có ID chống trùng, sửa/xóa theo ID),
     nên tự thử lại tối đa `retries` lần khi lỗi mạng / quá thời gian.
     """
-    query_str = urllib.parse.urlencode(params)
-    sep = "&" if "?" in webhook_url else "?"
-    full_url = f"{webhook_url}{sep}{query_str}"
-
     last_err = None
     for attempt in range(retries + 1):
         try:
-            req = urllib.request.Request(full_url, method="GET")
-            with urllib.request.urlopen(req, timeout=25) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+            resp = _session.get(webhook_url, params=params, timeout=25)
+            resp.raise_for_status()
+            return resp.json()
         except Exception as e:  # noqa: BLE001
             last_err = e
             if attempt < retries:
@@ -133,15 +135,7 @@ def drive_configured() -> bool:
     return bool(get_drive_webhook_url())
 
 
-def drive_fetch_month(month_key: str, use_cache: bool = True) -> dict:
-    """Đọc toàn bộ dữ liệu 1 tháng từ Google Sheet (có cache ngắn 30 giây)."""
-    now = time.time()
-    if use_cache:
-        with _cache_lock:
-            hit = _cache.get(month_key)
-            if hit and now - hit[0] < CACHE_TTL_SECONDS:
-                return hit[1]
-
+def _fetch_and_store(month_key: str) -> dict:
     data = _call_apps_script(_require_url(), {"action": "list", "month_key": month_key})
     if not data.get("success"):
         raise DriveError(data.get("error", "Google Drive trả về lỗi"))
@@ -150,8 +144,74 @@ def drive_fetch_month(month_key: str, use_cache: bool = True) -> dict:
         raise DriveError(OUTDATED_SCRIPT_MSG)
     _remember_links(month_key, data)
     with _cache_lock:
-        _cache[month_key] = (now, data)
+        _cache[month_key] = (time.time(), data)
     return data
+
+
+def _refresh_in_background(month_key: str) -> None:
+    with _cache_lock:
+        if month_key in _refreshing:
+            return
+        _refreshing.add(month_key)
+
+    def work():
+        try:
+            _fetch_and_store(month_key)
+        except Exception:  # noqa: BLE001  - lỗi làm mới ngầm không ảnh hưởng người dùng
+            pass
+        finally:
+            with _cache_lock:
+                _refreshing.discard(month_key)
+
+    threading.Thread(target=work, daemon=True).start()
+
+
+def drive_fetch_month(month_key: str, use_cache: bool = True):
+    """
+    Đọc dữ liệu 1 tháng. Trả về (data, stale).
+      - Cache còn mới (< 30s): trả ngay.
+      - Cache cũ nhưng chưa quá 10 phút: trả NGAY bản cũ (stale=True) và làm mới ngầm.
+      - Chưa có cache / quá cũ: phải chờ đọc từ Google Sheet.
+    """
+    if use_cache:
+        with _cache_lock:
+            hit = _cache.get(month_key)
+        if hit:
+            age = time.time() - hit[0]
+            if age < CACHE_TTL_SECONDS:
+                return _snapshot(hit[1]), False
+            if age < MAX_STALE_SECONDS:
+                _refresh_in_background(month_key)
+                return _snapshot(hit[1]), True
+    return _snapshot(_fetch_and_store(month_key)), False
+
+
+def _snapshot(data: dict) -> dict:
+    return {**data, "records": list(data.get("records") or [])}
+
+
+def drive_warm(month_key: str) -> None:
+    """Nạp sẵn cache (gọi lúc server vừa khởi động để lần mở trang đầu không phải chờ)."""
+    try:
+        _fetch_and_store(month_key)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def drive_months() -> list:
+    """Danh sách các tháng có trên Drive (cache 10 phút vì hiếm khi đổi)."""
+    now = time.time()
+    with _cache_lock:
+        hit = _months_cache.get("m")
+        if hit and now - hit[0] < MONTHS_TTL_SECONDS:
+            return hit[1]
+    data = _call_apps_script(_require_url(), {"action": "months"})
+    if not data.get("success"):
+        raise DriveError(data.get("error", "Google Drive trả về lỗi"))
+    months = data.get("months", [])
+    with _cache_lock:
+        _months_cache["m"] = (now, months)
+    return months
 
 
 def _record_params(record: dict) -> dict:
@@ -168,30 +228,57 @@ def _record_params(record: dict) -> dict:
     }
 
 
+def _patch_cache(month_key: str, fn) -> None:
+    """Sửa cache tại chỗ sau khi ghi thành công (copy-on-write để request khác đang đọc không bị ảnh hưởng)."""
+    with _cache_lock:
+        hit = _cache.get(month_key)
+        if not hit:
+            return
+        new_records = fn(list(hit[1].get("records") or []))
+        _cache[month_key] = (hit[0], {**hit[1], "records": new_records})
+
+
 def drive_append(month_key: str, rec_id: str, record: dict) -> dict:
     """Thêm bản ghi (cùng rec_id gửi lại nhiều lần vẫn chỉ ghi 1 dòng)."""
-    params = {"action": "append", "month_key": month_key, "id": rec_id, **_record_params(record)}
+    fields = _record_params(record)
+    params = {"action": "append", "month_key": month_key, "id": rec_id, **fields}
     try:
         data = _call_apps_script(_require_url(), params)
-    finally:
+    except Exception:
         _invalidate(month_key)
+        raise
     if not data.get("success"):
+        _invalidate(month_key)
         raise DriveError(data.get("error", "Google Drive từ chối ghi dữ liệu"))
     if "id" not in data:
         raise DriveError(OUTDATED_SCRIPT_MSG)
     _remember_links(month_key, data)
+
+    if data.get("duplicate"):
+        _invalidate(month_key)  # đã có sẵn trên Sheet -> đọc lại cho chắc
+    else:
+        row = {"id": rec_id, "stt": str(data.get("stt", "")), "month_key": month_key, **fields}
+        _patch_cache(month_key, lambda recs: recs + [row] if not any(r.get("id") == rec_id for r in recs) else recs)
+    with _cache_lock:
+        known = {m.get("month_key") for m in (_months_cache.get("m") or (0, []))[1]}
+        if month_key not in known:
+            _months_cache.pop("m", None)
     return data
 
 
 def drive_update(month_key: str, rec_id: str, record: dict) -> bool:
     """Sửa bản ghi theo ID. Trả về False nếu không tìm thấy."""
-    params = {"action": "update", "month_key": month_key, "id": rec_id, **_record_params(record)}
+    fields = _record_params(record)
+    params = {"action": "update", "month_key": month_key, "id": rec_id, **fields}
     try:
         data = _call_apps_script(_require_url(), params)
-    finally:
+    except Exception:
         _invalidate(month_key)
+        raise
     if data.get("success"):
+        _patch_cache(month_key, lambda recs: [{**r, **fields} if r.get("id") == rec_id else r for r in recs])
         return True
+    _invalidate(month_key)
     if data.get("not_found"):
         return False
     raise DriveError(data.get("error", "Google Drive từ chối cập nhật"))
@@ -201,10 +288,16 @@ def drive_delete(month_key: str, rec_id: str) -> bool:
     """Xóa bản ghi theo ID. Trả về False nếu không tìm thấy."""
     try:
         data = _call_apps_script(_require_url(), {"action": "delete", "month_key": month_key, "id": rec_id})
-    finally:
+    except Exception:
         _invalidate(month_key)
+        raise
     if data.get("success"):
+        def remove(recs):
+            kept = [r for r in recs if r.get("id") != rec_id]
+            return [{**r, "stt": str(i)} for i, r in enumerate(kept, start=1)]  # Sheet đánh lại STT 1..N
+        _patch_cache(month_key, remove)
         return True
+    _invalidate(month_key)
     if data.get("not_found"):
         return False
     raise DriveError(data.get("error", "Google Drive từ chối xóa"))

@@ -443,6 +443,7 @@
         let debounceTimer = null;
         let selectedMonthKey = '';
         let currentRecords = [];
+        let staleRetries = 0;
         let allRecords = [];
         let currentFilename = '';
         let editingRow = null;
@@ -720,8 +721,17 @@
                 document.getElementById('fieldThanhToan').value = 'Chưa Thanh Toán';
                 setTodayDefault();
 
-                selectedMonthKey = result.record.month_key || selectedMonthKey;
-                await loadRecords(selectedMonthKey);
+                forgetCachedMonths();
+                const rec = result.record;
+                if (!rec.month_key || rec.month_key === selectedMonthKey) {
+                    if (!allRecords.some(r => r.id === rec.id)) {
+                        allRecords.unshift({ ...rec, bao_gia_int: priceToInt(rec.bao_gia) });
+                    }
+                    renderRecords();
+                } else {
+                    selectedMonthKey = rec.month_key;
+                    await loadRecords(selectedMonthKey);
+                }
             } catch (err) {
                 showAlert('Mất kết nối, chưa lưu được. Dữ liệu vẫn giữ trên form, bấm Lưu để thử lại.', 'error');
             } finally {
@@ -733,7 +743,7 @@
             const sel = document.getElementById('monthSelector');
             selectedMonthKey = sel.value;
             document.getElementById('dateFilter').value = '';
-            loadRecords(selectedMonthKey);
+            loadRecords(selectedMonthKey, true);
         }
 
         function updateDriveUI(drive) {
@@ -865,7 +875,51 @@
                 `).join('');
         }
 
-        async function loadRecords(monthKey = '') {
+        // --- Cập nhật danh sách ngay trên trình duyệt sau khi lưu / sửa / xóa (không tải lại từ Drive) ---
+        function priceToInt(v) {
+            const d = String(v || '').replace(/[^\d]/g, '');
+            return d ? parseInt(d, 10) : 0;
+        }
+
+        function forgetCachedMonths() {
+            try {
+                sessionStorage.removeItem(cacheKeyFor(selectedMonthKey));
+                sessionStorage.removeItem(cacheKeyFor(''));
+            } catch (e) { /* bỏ qua */ }
+        }
+
+        function renumberLocal() {
+            // allRecords xếp mới nhất trước, STT = vị trí tính từ cuối (giống cách Sheet đánh lại STT)
+            allRecords.forEach((r, i) => { r.stt = allRecords.length - i; });
+        }
+
+        function applyRecordsData(data, pin) {
+            selectedMonthKey = data.month_key;
+            document.getElementById('activeFilenameBadge').innerText = data.filename || '';
+            document.getElementById('btnDownloadExcel').href = `/api/download-excel?month=${encodeURIComponent(selectedMonthKey)}&pin=${encodeURIComponent(pin)}`;
+
+            updateDriveUI(data.drive);
+
+            const sel = document.getElementById('monthSelector');
+            if (data.months && data.months.length > 0) {
+                sel.innerHTML = data.months.map(m => `
+                    <option value="${m.month_key}" ${m.month_key === selectedMonthKey ? 'selected' : ''}>
+                        ${m.label}
+                    </option>
+                `).join('');
+            }
+
+            allRecords = data.records || [];
+            currentFilename = data.filename || '';
+            renderRecords();
+        }
+
+        function cacheKeyFor(month) {
+            return 'gara_recs_' + (month || 'current');
+        }
+
+        // useCache = true: hiện ngay dữ liệu lần xem trước (nếu có) rồi cập nhật lại từ máy chủ
+        async function loadRecords(monthKey = '', useCache = false) {
             const pin = getSavedPin();
             if (!pin) {
                 showPinGate(false);
@@ -874,6 +928,22 @@
 
             const targetMonth = monthKey || selectedMonthKey || '';
             const query = targetMonth ? `?month=${encodeURIComponent(targetMonth)}` : '';
+
+            let shownFromCache = false;
+            if (useCache) {
+                try {
+                    const cached = sessionStorage.getItem(cacheKeyFor(targetMonth));
+                    if (cached) {
+                        applyRecordsData(JSON.parse(cached), pin);
+                        shownFromCache = true;
+                    }
+                } catch (e) { /* bỏ qua */ }
+            }
+            if (!shownFromCache) {
+                const loading = '<div class="py-8 text-center text-slate-400 text-xs">Đang tải dữ liệu...</div>';
+                document.getElementById('mobileRecordList').innerHTML = loading;
+                document.getElementById('excelTableBody').innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-400 text-xs">Đang tải dữ liệu...</td></tr>`;
+            }
 
             try {
                 const res = await fetch(`/api/records${query}`, {
@@ -889,26 +959,22 @@
                     return;
                 }
 
-                selectedMonthKey = data.month_key;
-                document.getElementById('activeFilenameBadge').innerText = data.filename || '';
-                document.getElementById('btnDownloadExcel').href = `/api/download-excel?month=${encodeURIComponent(selectedMonthKey)}&pin=${encodeURIComponent(pin)}`;
-
-                updateDriveUI(data.drive);
-
-                const sel = document.getElementById('monthSelector');
-                if (data.months && data.months.length > 0) {
-                    sel.innerHTML = data.months.map(m => `
-                        <option value="${m.month_key}" ${m.month_key === selectedMonthKey ? 'selected' : ''}>
-                            ${m.label}
-                        </option>
-                    `).join('');
+                applyRecordsData(data, pin);
+                // Máy chủ trả dữ liệu cũ để hiện ngay -> tự lấy bản mới sau vài giây (tối đa 2 lần)
+                if (data.stale && staleRetries < 2) {
+                    staleRetries++;
+                    setTimeout(() => loadRecords(selectedMonthKey), 4000);
+                } else if (!data.stale) {
+                    staleRetries = 0;
                 }
-
-                allRecords = data.records || [];
-                currentFilename = data.filename || '';
-                renderRecords();
+                try {
+                    const json = JSON.stringify(data);
+                    sessionStorage.setItem(cacheKeyFor(targetMonth), json);
+                    sessionStorage.setItem(cacheKeyFor(data.month_key), json);
+                } catch (e) { /* bỏ qua */ }
             } catch (err) {
                 console.error(err);
+                if (!shownFromCache) showAlert('Mất kết nối, chưa tải được dữ liệu.', 'error');
             }
         }
 
@@ -964,13 +1030,17 @@
                     errEl.classList.remove('hidden');
                     return;
                 }
+                const editedId = editingRow.id;
                 closeEdit();
-                if (result.drive && result.drive.error) {
-                    showAlert(`Đã sửa trên server nhưng chưa cập nhật được Drive: ${result.drive.error}`, 'warning');
+                showAlert('Đã cập nhật dòng dữ liệu.', 'success');
+                forgetCachedMonths();
+                const target = allRecords.find(r => r.id === editedId);
+                if (target) {
+                    Object.assign(target, result.record, { stt: target.stt, bao_gia_int: priceToInt(result.record.bao_gia) });
+                    renderRecords();
                 } else {
-                    showAlert('Đã cập nhật dòng dữ liệu.', 'success');
+                    await loadRecords(selectedMonthKey);
                 }
-                await loadRecords(selectedMonthKey);
             } catch (e) {
                 errEl.innerText = 'Lỗi kết nối máy chủ.';
                 errEl.classList.remove('hidden');
@@ -991,7 +1061,15 @@
                     return;
                 }
                 if (res.ok) {
-                    await loadRecords(selectedMonthKey);
+                    const r = await res.json().catch(() => ({}));
+                    forgetCachedMonths();
+                    if (r.reload) {
+                        await loadRecords(selectedMonthKey);
+                    } else {
+                        allRecords = allRecords.filter(x => x.id !== rowId);
+                        renumberLocal();
+                        renderRecords();
+                    }
                 } else {
                     const r = await res.json().catch(() => ({}));
                     showAlert(r.message || 'Không xóa được dòng này, vui lòng thử lại.', 'error');
@@ -1034,7 +1112,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             setTodayDefault();
             initSpeechRecognition();
-            loadRecords();
+            loadRecords('', true);
         });
     </script>
 </body>

@@ -2,6 +2,7 @@
 import io
 import os
 import socket
+import threading
 from flask import Flask, render_template, request, jsonify, send_file
 from parser import parse_voice_text, validate_record, format_price_vn
 from excel_manager import (
@@ -115,6 +116,7 @@ def api_save():
         return jsonify({"success": False, "require_pin": True, "errors": ["Mã PIN không đúng hoặc chưa nhập mã PIN."]}), 401
 
     payload = request.get_json(silent=True) or {}
+    client_id = payload.get("id", "")
 
     if payload.get("from_voice_direct") and payload.get("text"):
         parsed = parse_voice_text(payload["text"])
@@ -127,7 +129,7 @@ def api_save():
         return jsonify({"success": False, "errors": errors}), 400
 
     try:
-        saved_row = storage.add_record(cleaned, payload.get("id", ""))
+        saved_row = storage.add_record(cleaned, client_id)
     except StorageError as e:
         return _storage_error(e)
 
@@ -173,6 +175,7 @@ def api_records():
             "count": len(records),
             "total_revenue": format_price_vn(total_revenue) if total_revenue else "0",
             "drive": get_saved_drive_links(data["month_key"]),
+            "stale": bool(data.get("stale")),
         }
     )
 
@@ -208,7 +211,8 @@ def api_delete_record(rec_id: str):
     except StorageError as e:
         return jsonify({"success": False, "message": f"Không xóa được trên Google Drive: {e}"}), 502
     if ok:
-        return jsonify({"success": True, "message": "Đã xóa dòng dữ liệu."})
+        # Chế độ Excel local dùng số dòng làm ID nên các ID phía sau bị dịch -> giao diện cần tải lại
+        return jsonify({"success": True, "message": "Đã xóa dòng dữ liệu.", "reload": not storage.using_drive()})
     return jsonify({"success": False, "message": "Không tìm thấy dòng cần xóa."}), 404
 
 
@@ -231,6 +235,17 @@ def api_download_excel():
         download_name=data["filename"],
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+def _warm_cache_on_start() -> None:
+    """Nạp sẵn dữ liệu tháng hiện tại từ Google Sheet để lần mở trang đầu tiên không phải chờ."""
+    if os.environ.get("GARA_WARM_CACHE", "1") != "1" or not storage.using_drive():
+        return
+    from drive_sync import drive_warm
+    threading.Thread(target=drive_warm, args=(get_month_key_from_date(),), daemon=True).start()
+
+
+_warm_cache_on_start()
 
 
 if __name__ == "__main__":
