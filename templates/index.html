@@ -914,6 +914,16 @@
             renderRecords();
         }
 
+        function showListError(message) {
+            const html = `<div class="py-8 px-4 text-center">
+                <div class="text-sm font-semibold text-red-600">${esc(message)}</div>
+                <button type="button" onclick="loadRecords(selectedMonthKey)"
+                    class="mt-3 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">Thử lại</button>
+            </div>`;
+            document.getElementById('mobileRecordList').innerHTML = html;
+            document.getElementById('excelTableBody').innerHTML = `<tr><td colspan="11">${html}</td></tr>`;
+        }
+
         function cacheKeyFor(month) {
             return 'gara_recs_' + (month || 'current');
         }
@@ -945,17 +955,23 @@
                 document.getElementById('excelTableBody').innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-400 text-xs">Đang tải dữ liệu...</td></tr>`;
             }
 
+            const controller = new AbortController();
+            const abortTimer = setTimeout(() => controller.abort(), 70000);
             try {
                 const res = await fetch(`/api/records${query}`, {
-                    headers: { 'X-App-Pin': pin }
+                    headers: { 'X-App-Pin': pin },
+                    signal: controller.signal
                 });
+                clearTimeout(abortTimer);
                 if (res.status === 401) {
                     showPinGate(true);
                     return;
                 }
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    showAlert(data.message || 'Không tải được dữ liệu, vui lòng thử lại.', 'error');
+                    const msg = data.message || `Máy chủ trả lỗi ${res.status}, vui lòng thử lại.`;
+                    showAlert(msg, 'error');
+                    if (!shownFromCache) showListError(msg);
                     return;
                 }
 
@@ -973,8 +989,13 @@
                     sessionStorage.setItem(cacheKeyFor(data.month_key), json);
                 } catch (e) { /* bỏ qua */ }
             } catch (err) {
+                clearTimeout(abortTimer);
                 console.error(err);
-                if (!shownFromCache) showAlert('Mất kết nối, chưa tải được dữ liệu.', 'error');
+                const msg = err.name === 'AbortError'
+                    ? 'Máy chủ phản hồi quá lâu (có thể đang khởi động lại), vui lòng thử lại sau ít giây.'
+                    : 'Mất kết nối, chưa tải được dữ liệu.';
+                showAlert(msg, 'error');
+                if (!shownFromCache) showListError(msg);
             }
         }
 

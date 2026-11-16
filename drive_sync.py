@@ -87,7 +87,7 @@ _cache: dict = {}
 _cache_lock = threading.Lock()
 
 
-def _call_apps_script(webhook_url: str, params: dict, retries: int = 2) -> dict:
+def _call_apps_script(webhook_url: str, params: dict, retries: int = 1) -> dict:
     """
     Gửi request tới Google Apps Script Web App (GET + query string để tránh mất body khi 302).
     Mọi thao tác đều an toàn khi gọi lại (thêm có ID chống trùng, sửa/xóa theo ID),
@@ -96,7 +96,7 @@ def _call_apps_script(webhook_url: str, params: dict, retries: int = 2) -> dict:
     last_err = None
     for attempt in range(retries + 1):
         try:
-            resp = _session.get(webhook_url, params=params, timeout=25)
+            resp = _session.get(webhook_url, params=params, timeout=20)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:  # noqa: BLE001
