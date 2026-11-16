@@ -225,6 +225,8 @@ def _record_params(record: dict) -> dict:
         "thanh_toan": record.get("thanh_toan", ""),
         "nguoi_thuc_hien": record.get("nguoi_thuc_hien", ""),
         "ghi_chu": record.get("ghi_chu", ""),
+        "so_dien_thoai": record.get("so_dien_thoai", ""),
+        "ten_khach_hang": record.get("ten_khach_hang", ""),
     }
 
 

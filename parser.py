@@ -627,6 +627,18 @@ def normalize_spoken_numbers(text: str) -> str:
             i = plate[1]
             continue
 
+        # Số điện thoại đọc từng chữ số: "không chín không một hai ba bốn năm sáu bảy"
+        if _core(tokens[i]) in _PLATE_DIGITS:
+            j = i
+            digits = ""
+            while j < n and _core(tokens[j]) in _PLATE_DIGITS:
+                digits += str(_PLATE_DIGITS[_core(tokens[j])])
+                j += 1
+            if len(digits) >= 9:
+                out.append(digits + _trail(tokens[j - 1]))
+                i = j
+                continue
+
         if _core(tokens[i]) in _NUM_WORDS:
             j = i
             while j < n and _core(tokens[j]) in _NUM_WORDS:
@@ -644,6 +656,67 @@ def normalize_spoken_numbers(text: str) -> str:
         out.append(tokens[i])
         i += 1
     return " ".join(out)
+
+
+# ---------------------------------------------------------------------------
+# SỐ ĐIỆN THOẠI & TÊN KHÁCH HÀNG
+# ---------------------------------------------------------------------------
+_PHONE_RE = re.compile(
+    r"(?:(?:số\s+)?(?:điện\s+thoại|sđt|đt)\s*[:,-]?\s*)?"
+    r"(?<![\d.,])((?:\+?84|0)(?:[\s.\-]?\d){8,9})(?!\d)",
+    flags=re.IGNORECASE,
+)
+_NAME_RE = re.compile(
+    r"\b(?:tên\s+khách\s+hàng|tên\s+khách|khách\s+hàng|chủ\s+xe)\s+(?:là\s+)?"
+    r"(?:(?:anh|chị|cô|chú|bác|ông|bà)\s+)?"
+    r"([A-Za-zÀ-ỹ]+(?:\s+[A-Za-zÀ-ỹ]+){0,3})",
+    flags=re.IGNORECASE,
+)
+_NAME_STOP = {
+    "số", "sđt", "đt", "điện", "biển", "xe", "thay", "sơn", "bảo", "rửa", "làm", "vệ", "đồng", "kiểm",
+    "cân", "nạp", "sửa", "đánh", "phủ", "hạ", "đại", "thợ", "tiền", "chuyển", "chưa", "nợ", "giá", "báo",
+    "ghi", "lưu", "hẹn", "người", "thực", "phụ", "kích", "độ", "lắp", "dán", "cứu", "đọc", "súc", "vớt", "láng",
+}
+
+
+def normalize_phone(raw: str) -> str:
+    """'0901 234 567' / '+84 901 234 567' -> '0901234567'. Trả về '' nếu rỗng."""
+    digits = re.sub(r"\D", "", str(raw or ""))
+    if digits.startswith("84") and len(digits) in (11, 12):
+        digits = "0" + digits[2:]
+    return digits
+
+
+def extract_phone(text: str):
+    """Trả về (số_điện_thoại_chuẩn_hóa, đoạn_khớp_để_xóa_khỏi_câu)."""
+    m = _PHONE_RE.search(text)
+    if not m:
+        return "", ""
+    phone = normalize_phone(m.group(1))
+    if not (9 <= len(phone) <= 11):
+        return "", ""
+    return phone, m.group(0)
+
+
+def extract_customer_name(text: str):
+    """Trả về (tên_khách, đoạn_khớp_để_xóa_khỏi_câu). Tên dừng trước từ khóa dịch vụ / hãng xe."""
+    m = _NAME_RE.search(text)
+    if not m:
+        return "", ""
+    kept = []
+    for w in m.group(1).split():
+        if w.lower() in _NAME_STOP or w.lower() in KNOWN_BRANDS or any(ch.isdigit() for ch in w):
+            break
+        kept.append(w)
+    if not kept:
+        return "", ""
+    name = " ".join(kept)
+    # đoạn cần xóa: từ đầu cụm khóa tới hết phần tên giữ lại
+    start = m.start()
+    tail_pos = m.start(1)
+    for w in kept:
+        tail_pos = text.index(w, tail_pos) + len(w)
+    return name.title(), text[start:tail_pos]
 
 
 def parse_voice_text(text: str) -> dict:
@@ -676,6 +749,8 @@ def parse_voice_text(text: str) -> dict:
             "thanh_toan": "Chưa Thanh Toán",
             "nguoi_thuc_hien": "",
             "ghi_chu": "",
+            "so_dien_thoai": "",
+            "ten_khach_hang": "",
             "is_valid": False,
             "errors": ["Vui lòng nói hoặc nhập thông tin xe."],
         }
@@ -696,6 +771,32 @@ def parse_voice_text(text: str) -> dict:
         if ghi_chu:
             ghi_chu = ghi_chu[0].upper() + ghi_chu[1:]
         working_text = working_text[: m_note.start()]
+
+    # 1a. Tên / SĐT khách nói SAU phần "ghi chú" (VD: "ghi chú khách lấy 5 giờ tên khách Lan") -> tách ra khỏi ghi chú.
+    # Chỉ nhận dạng "tên khách ..." (không nhận "khách hàng quen" vì đó là nội dung ghi chú).
+    note_phone = note_name = ""
+    if ghi_chu:
+        note_phone, matched_np = extract_phone(ghi_chu)
+        if matched_np:
+            ghi_chu = ghi_chu.replace(matched_np, " ", 1)
+        if re.search(r"tên\s+khách", ghi_chu, flags=re.IGNORECASE):
+            note_name, matched_nn = extract_customer_name(ghi_chu)
+            if matched_nn:
+                ghi_chu = ghi_chu.replace(matched_nn, " ", 1)
+        ghi_chu = re.sub(r"\s+", " ", ghi_chu).strip(" .,-")
+        if ghi_chu:
+            ghi_chu = ghi_chu[0].upper() + ghi_chu[1:]
+
+    # 1b. Số điện thoại & tên khách hàng (trước biển số và giá để số điện thoại không bị nhận nhầm)
+    so_dien_thoai, matched_phone = extract_phone(working_text)
+    if matched_phone:
+        working_text = working_text.replace(matched_phone, " , ", 1)
+    ten_khach_hang, matched_name = extract_customer_name(working_text)
+    if matched_name:
+        working_text = working_text.replace(matched_name, " , ", 1)
+
+    so_dien_thoai = so_dien_thoai or note_phone
+    ten_khach_hang = ten_khach_hang or note_name
 
     # 2. Trích xuất Biển số xe
     bien_so, matched_plate = extract_license_plate(working_text)
@@ -848,6 +949,8 @@ def parse_voice_text(text: str) -> dict:
         "thanh_toan": thanh_toan,
         "nguoi_thuc_hien": nguoi_thuc_hien or "",
         "ghi_chu": ghi_chu or "",
+        "so_dien_thoai": so_dien_thoai,
+        "ten_khach_hang": ten_khach_hang,
         "is_valid": len(errors) == 0,
         "errors": errors,
     }
@@ -866,6 +969,11 @@ def validate_record(data: dict) -> tuple[bool, list[str], dict]:
     thanh_toan = (data.get("thanh_toan") or "Chưa Thanh Toán").strip()
     nguoi_thuc_hien = (data.get("nguoi_thuc_hien") or data.get("nguoi_phu_trach") or "").strip()
     ghi_chu = (data.get("ghi_chu") or "").strip()
+    raw_phone = str(data.get("so_dien_thoai") or "").strip()
+    so_dien_thoai = normalize_phone(raw_phone)
+    ten_khach_hang = (data.get("ten_khach_hang") or "").strip()
+    if ten_khach_hang:
+        ten_khach_hang = ten_khach_hang.title()
 
     extracted_plate, _ = extract_license_plate(bien_so)
     if extracted_plate:
@@ -894,6 +1002,8 @@ def validate_record(data: dict) -> tuple[bool, list[str], dict]:
         errors.append("Hiệu Xe không được để trống.")
     if not noi_dung:
         errors.append("Nội Dung công việc không được để trống.")
+    if raw_phone and not re.fullmatch(r"0\d{8,10}", so_dien_thoai):
+        errors.append("Số Điện Thoại không hợp lệ (VD: 0901234567).")
 
     cleaned = {
         "ngay": ngay,
@@ -906,6 +1016,8 @@ def validate_record(data: dict) -> tuple[bool, list[str], dict]:
         "thanh_toan": thanh_toan,
         "nguoi_thuc_hien": nguoi_thuc_hien,
         "ghi_chu": ghi_chu,
+        "so_dien_thoai": so_dien_thoai,
+        "ten_khach_hang": ten_khach_hang,
     }
 
     return (len(errors) == 0), errors, cleaned

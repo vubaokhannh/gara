@@ -68,6 +68,8 @@ def _shape(rec: dict, month_key: str) -> dict:
         "thanh_toan": rec.get("thanh_toan", ""),
         "nguoi_thuc_hien": rec.get("nguoi_thuc_hien", ""),
         "ghi_chu": rec.get("ghi_chu", ""),
+        "so_dien_thoai": rec.get("so_dien_thoai", ""),
+        "ten_khach_hang": rec.get("ten_khach_hang", ""),
     }
     out["gia_int"] = gia_int
     return out

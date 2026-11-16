@@ -11,7 +11,7 @@ from parser import format_price_vn, parse_price_input
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
-# 10 cột chuẩn theo yêu cầu Gara Ô tô
+# 12 cột: 10 cột chuẩn + Số Điện Thoại + Tên Khách Hàng
 HEADERS = [
     "STT",
     "Ngày",
@@ -23,6 +23,8 @@ HEADERS = [
     "Thanh Toán",
     "Người Thực Hiện",
     "Ghi Chú",
+    "Số Điện Thoại",
+    "Tên Khách Hàng",
 ]
 
 _excel_lock = threading.Lock()
@@ -86,8 +88,8 @@ def _style_header_row(ws) -> None:
         cell.alignment = header_align
         cell.border = thin_border
 
-    # Độ rộng tối ưu cho 10 cột
-    col_widths = [6, 14, 16, 18, 22, 32, 18, 18, 18, 24]
+    # Độ rộng tối ưu cho 12 cột
+    col_widths = [6, 14, 16, 18, 22, 32, 18, 18, 18, 24, 16, 22]
     for idx, width in enumerate(col_widths, start=1):
         ws.column_dimensions[get_column_letter(idx)].width = width
 
@@ -107,12 +109,12 @@ def _style_data_row(ws, row_idx: int) -> None:
         cell.font = data_font
         cell.border = thin_border
         # 1: STT, 2: Ngày, 3: Biển Số, 5: Dịch vụ, 8: Thanh Toán -> Căn giữa
-        if col_idx in (1, 2, 3, 5, 8):
+        if col_idx in (1, 2, 3, 5, 8, 11):
             cell.alignment = Alignment(horizontal="center", vertical="center")
         # 7: Báo Giá Dịch Vụ -> Căn phải
         elif col_idx == 7:
             cell.alignment = Alignment(horizontal="right", vertical="center")
-        # 4: Hiệu Xe, 6: Nội Dung, 9: Người Thực Hiện, 10: Ghi Chú -> Căn trái
+        # 4: Hiệu Xe, 6: Nội Dung, 9: Người Thực Hiện, 10: Ghi Chú, 12: Tên Khách Hàng -> Căn trái
         else:
             cell.alignment = Alignment(horizontal="left", vertical="center")
 
@@ -120,7 +122,7 @@ def _style_data_row(ws, row_idx: int) -> None:
 def ensure_excel_file(month_key: str = "") -> str:
     """
     Kiểm tra và khởi tạo file Excel cho tháng tương ứng nếu chưa tồn tại.
-    Nếu file cũ có cấu trúc cột cũ thì tự động nâng cấp lên 10 cột chuẩn.
+    Nếu file cũ có cấu trúc cột cũ thì tự động nâng cấp lên cấu trúc chuẩn (12 cột).
     """
     os.makedirs(DATA_DIR, exist_ok=True)
     mk = get_month_key_from_date(month_key)
@@ -136,11 +138,17 @@ def ensure_excel_file(month_key: str = "") -> str:
     else:
         wb = load_workbook(file_path)
         ws = wb.active
-        needs_migration = (
-            ws.max_column != len(HEADERS)
-            or ws.cell(row=1, column=1).value != "STT"
-            or ws.cell(row=1, column=len(HEADERS)).value != "Ghi Chú"
+        is_standard_layout = (
+            ws.cell(row=1, column=1).value == "STT"
+            and ws.cell(row=1, column=10).value == "Ghi Chú"
         )
+        if is_standard_layout and ws.cell(row=1, column=12).value != HEADERS[11]:
+            # File 10 cột chuẩn -> chỉ thêm 2 cột mới ở cuối, giữ nguyên dữ liệu
+            _style_header_row(ws)
+            for r in range(2, ws.max_row + 1):
+                _style_data_row(ws, r)
+            wb.save(file_path)
+        needs_migration = not is_standard_layout
         if needs_migration:
             # Đọc lại dữ liệu cũ để nâng cấp sang 10 cột
             old_rows = []
@@ -179,6 +187,8 @@ def ensure_excel_file(month_key: str = "") -> str:
                     gia_fmt,
                     "Chưa Thanh Toán",
                     nguoi_pt,
+                    "",
+                    "",
                     "",
                 ]
                 ws.append(new_row)
@@ -236,6 +246,8 @@ def append_to_excel(record: dict) -> dict:
         thanh_toan = (record.get("thanh_toan") or "Chưa Thanh Toán").strip()
         nguoi_thuc_hien = (record.get("nguoi_thuc_hien") or record.get("nguoi_phu_trach") or "").strip()
         ghi_chu = (record.get("ghi_chu") or "").strip()
+        so_dien_thoai = (record.get("so_dien_thoai") or "").strip()
+        ten_khach_hang = (record.get("ten_khach_hang") or "").strip()
 
         row_values = [
             stt,
@@ -248,6 +260,8 @@ def append_to_excel(record: dict) -> dict:
             thanh_toan,
             nguoi_thuc_hien,
             ghi_chu,
+            so_dien_thoai,
+            ten_khach_hang,
         ]
 
         ws.append(row_values)
@@ -270,6 +284,8 @@ def append_to_excel(record: dict) -> dict:
             "thanh_toan": thanh_toan,
             "nguoi_thuc_hien": nguoi_thuc_hien,
             "ghi_chu": ghi_chu,
+            "so_dien_thoai": so_dien_thoai,
+            "ten_khach_hang": ten_khach_hang,
             # Tương thích ngược:
             "thoi_gian": ngay,
             "hang_xe": hieu_xe,
@@ -301,6 +317,8 @@ def read_all_records(month_key: str = "") -> tuple[str, str, list[dict]]:
             thanh_toan = ws.cell(row=row_idx, column=8).value
             nguoi_thuc_hien = ws.cell(row=row_idx, column=9).value
             ghi_chu = ws.cell(row=row_idx, column=10).value
+            so_dien_thoai = ws.cell(row=row_idx, column=11).value
+            ten_khach_hang = ws.cell(row=row_idx, column=12).value
 
             if not any([ngay, bien_so, hieu_xe, dich_vu, noi_dung, bao_gia_val, nguoi_thuc_hien]):
                 continue
@@ -323,6 +341,8 @@ def read_all_records(month_key: str = "") -> tuple[str, str, list[dict]]:
                     "thanh_toan": str(thanh_toan or "Chưa Thanh Toán"),
                     "nguoi_thuc_hien": str(nguoi_thuc_hien or ""),
                     "ghi_chu": str(ghi_chu or ""),
+                    "so_dien_thoai": str(so_dien_thoai or ""),
+                    "ten_khach_hang": str(ten_khach_hang or ""),
                     # Tương thích ngược:
                     "thoi_gian": str(ngay or ""),
                     "hang_xe": str(hieu_xe or ""),
@@ -375,6 +395,8 @@ def update_record_by_row(row_id: int, record: dict, month_key: str = "") -> dict
             record.get("thanh_toan", "Chưa Thanh Toán"),
             record.get("nguoi_thuc_hien", ""),
             record.get("ghi_chu", ""),
+            record.get("so_dien_thoai", ""),
+            record.get("ten_khach_hang", ""),
         ]
         for offset, val in enumerate(values):
             ws.cell(row=row_id, column=2 + offset).value = val
@@ -405,6 +427,8 @@ def build_xlsx_bytes(records: list, month_key: str = "") -> bytes:
                 rec.get("thanh_toan", ""),
                 rec.get("nguoi_thuc_hien", ""),
                 rec.get("ghi_chu", ""),
+                rec.get("so_dien_thoai", ""),
+                rec.get("ten_khach_hang", ""),
             ]
         )
         _style_data_row(ws, ws.max_row)

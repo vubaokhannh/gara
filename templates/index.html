@@ -48,6 +48,16 @@
             background: linear-gradient(135deg, #ef4444, #dc2626) !important;
         }
 
+        /* Bảng desktop: tiêu đề luôn dính ở trên cùng khi cuộn */
+        #excelTableBody { background: #fff; }
+        .table-sticky thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f1f5f9;
+            box-shadow: 0 1px 0 #e2e8f0;
+        }
+
         .license-plate {
             letter-spacing: 0.05em;
         }
@@ -62,7 +72,7 @@
 
     <!-- Thanh điều hướng -->
     <header class="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+        <div class="max-w-6xl 2xl:max-w-[1800px] xl:max-w-[1500px] lg:max-w-[1200px] mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2.5 sm:gap-3">
                 <div
                     class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/20 shrink-0">
@@ -98,7 +108,7 @@
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
+    <main class="max-w-6xl lg:max-w-[1200px] xl:max-w-[1500px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
 
         <!-- CARD 1: THU ÂM & FORM 10 CỘT CHUẨN GARA -->
         <section class="bg-white rounded-3xl sm:rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
@@ -249,19 +259,37 @@
 
                     <!-- Hàng 3: Người Thực Hiện | Ghi Chú -->
                     <div class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 sm:gap-3">
-                        <div class="col-span-1 sm:col-span-4">
+                        <div class="col-span-1 sm:col-span-4 min-w-0">
                             <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
                                 Người Thực Hiện
                             </label>
                             <input type="text" id="fieldNguoiThucHien" placeholder="VD: Minh, Thắng..."
                                 class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
                         </div>
-                        <div class="col-span-1 sm:col-span-8">
+                        <div class="col-span-1 sm:col-span-8 min-w-0">
                             <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
                                 Ghi Chú
                             </label>
                             <input type="text" id="fieldGhiChu"
                                 placeholder="VD: Khách hẹn 17h lấy, kiểm tra thêm gầm..."
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                    </div>
+
+                    <!-- Hàng 4: Tên Khách Hàng | Số Điện Thoại -->
+                    <div class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 sm:gap-3">
+                        <div class="col-span-1 sm:col-span-6 min-w-0">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Tên Khách Hàng
+                            </label>
+                            <input type="text" id="fieldTenKhach" placeholder="VD: Nguyễn Văn An"
+                                class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
+                        </div>
+                        <div class="col-span-1 sm:col-span-6 min-w-0">
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                                Số Điện Thoại
+                            </label>
+                            <input type="tel" id="fieldSdt" inputmode="tel" placeholder="VD: 0901234567"
                                 class="w-full rounded-xl bg-slate-50/70 border border-slate-200 px-3 py-2 text-base sm:text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition" />
                         </div>
                     </div>
@@ -335,27 +363,29 @@
             </div>
 
             <!-- Bảng đầy đủ 10 cột trên Desktop -->
-            <div class="hidden sm:block overflow-x-auto">
-                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <div class="hidden sm:block overflow-auto max-h-[68vh]">
+                <table class="table-sticky w-full min-w-[1500px] text-left border-collapse text-xs sm:text-sm">
                     <thead>
                         <tr
                             class="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/60">
                             <th class="py-3 px-3 text-center w-12">STT</th>
                             <th class="py-3 px-3 text-center">Ngày</th>
                             <th class="py-3 px-3 text-center">Biển Số</th>
-                            <th class="py-3 px-3">Hiệu Xe</th>
-                            <th class="py-3 px-3 text-center">Dịch vụ</th>
-                            <th class="py-3 px-4">Nội Dung</th>
-                            <th class="py-3 px-3 text-right">Báo Giá</th>
+                            <th class="py-3 px-3 min-w-[130px]">Hiệu Xe</th>
+                            <th class="py-3 px-3 text-center min-w-[120px]">Dịch vụ</th>
+                            <th class="py-3 px-4 min-w-[220px]">Nội Dung</th>
+                            <th class="py-3 px-3 text-right min-w-[100px]">Báo Giá</th>
                             <th class="py-3 px-3 text-center">Thanh Toán</th>
-                            <th class="py-3 px-3">Người TH</th>
-                            <th class="py-3 px-3">Ghi Chú</th>
+                            <th class="py-3 px-3 min-w-[100px]">Người TH</th>
+                            <th class="py-3 px-3 min-w-[160px]">Ghi Chú</th>
+                            <th class="py-3 pl-6 pr-4 min-w-[170px] border-l border-slate-200">Khách hàng</th>
+                            <th class="py-3 px-5 text-center min-w-[140px] whitespace-nowrap">SĐT</th>
                             <th class="py-3 px-2 text-center w-10"></th>
                         </tr>
                     </thead>
                     <tbody id="excelTableBody" class="divide-y divide-slate-100">
                         <tr>
-                            <td colspan="11" class="py-10 text-center text-slate-400 text-xs">
+                            <td colspan="13" class="py-10 text-center text-slate-400 text-xs">
                                 Chưa có dữ liệu trong tháng này.
                             </td>
                         </tr>
@@ -424,10 +454,14 @@
                         <option value="Tiền Mặt">Tiền Mặt</option>
                         <option value="Chuyển Khoản">Chuyển Khoản</option>
                     </select></label>
-                <label class="col-span-2 sm:col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Người Thực Hiện
+                <label class="col-span-1 min-w-0 text-[11px] font-semibold text-slate-400 uppercase">Người Thực Hiện
                     <input id="editNguoiTH" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
-                <label class="col-span-2 sm:col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Ghi Chú
+                <label class="col-span-1 min-w-0 text-[11px] font-semibold text-slate-400 uppercase">Ghi Chú
                     <input id="editGhiChu" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
+                <label class="col-span-1 min-w-0 text-[11px] font-semibold text-slate-400 uppercase">Tên Khách Hàng
+                    <input id="editTenKhach" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
+                <label class="col-span-1 min-w-0 text-[11px] font-semibold text-slate-400 uppercase">Số Điện Thoại
+                    <input id="editSdt" type="tel" inputmode="tel" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
             </div>
             <p id="editError" class="hidden mt-3 text-xs font-semibold text-red-600"></p>
             <div class="mt-4 flex gap-2 justify-end">
@@ -602,6 +636,8 @@
             document.getElementById('fieldThanhToan').value = 'Chưa Thanh Toán';
             document.getElementById('fieldNguoiThucHien').value = '';
             document.getElementById('fieldGhiChu').value = '';
+            document.getElementById('fieldTenKhach').value = '';
+            document.getElementById('fieldSdt').value = '';
             setTodayDefault();
             hideAlert();
             updateBadge('Sẵn sàng', 'neutral');
@@ -628,6 +664,8 @@
                 if (data.thanh_toan) document.getElementById('fieldThanhToan').value = data.thanh_toan;
                 document.getElementById('fieldNguoiThucHien').value = data.nguoi_thuc_hien || '';
                 document.getElementById('fieldGhiChu').value = data.ghi_chu || '';
+                document.getElementById('fieldTenKhach').value = data.ten_khach_hang || '';
+                document.getElementById('fieldSdt').value = data.so_dien_thoai || '';
 
                 if (data.is_valid) {
                     updateBadge('Đủ thông tin', 'valid');
@@ -668,6 +706,8 @@
                 thanh_toan: document.getElementById('fieldThanhToan').value,
                 nguoi_thuc_hien: document.getElementById('fieldNguoiThucHien').value.trim(),
                 ghi_chu: document.getElementById('fieldGhiChu').value.trim(),
+                so_dien_thoai: document.getElementById('fieldSdt').value.trim(),
+                ten_khach_hang: document.getElementById('fieldTenKhach').value.trim(),
                 pin: getSavedPin()
             };
             const sig = JSON.stringify(payload);
@@ -718,6 +758,8 @@
                 document.getElementById('fieldBaoGia').value = '';
                 document.getElementById('fieldNguoiThucHien').value = '';
                 document.getElementById('fieldGhiChu').value = '';
+                document.getElementById('fieldTenKhach').value = '';
+                document.getElementById('fieldSdt').value = '';
                 document.getElementById('fieldThanhToan').value = 'Chưa Thanh Toán';
                 setTodayDefault();
 
@@ -803,7 +845,7 @@
 
                 if (!list || list.length === 0) {
                     const emptyHtml = filterDate ? `Không có xe nào trong ngày <b>${filterDate}</b>` : `Chưa có dữ liệu xe trong <b>${currentFilename}</b>`;
-                    tbody.innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-400 text-xs">${emptyHtml}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="13" class="py-10 text-center text-slate-400 text-xs">${emptyHtml}</td></tr>`;
                     mobileList.innerHTML = `<div class="py-8 text-center text-slate-400 text-xs">${emptyHtml}</div>`;
                     return;
                 }
@@ -812,7 +854,7 @@
                 currentRecords = list;
                 mobileList.innerHTML = list.map((r, i) => `
                     <div class="bg-white">
-                        <button type="button" onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full text-left px-4 py-3 active:bg-slate-50">
+                        <div role="button" tabindex="0" onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full text-left px-4 py-3 active:bg-slate-50 cursor-pointer">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="min-w-0 flex items-center gap-2">
                                     <span class="font-bold text-sm text-blue-700 license-plate shrink-0">${esc(r.bien_so)}</span>
@@ -821,17 +863,26 @@
                                 <span class="text-sm font-bold ${r.bao_gia ? 'text-emerald-600' : 'text-slate-300'} shrink-0">${r.bao_gia ? esc(r.bao_gia) : '—'}</span>
                             </div>
                             <div class="mt-0.5 flex items-center justify-between gap-3">
-                                <span class="text-xs text-slate-500 truncate">${esc(r.noi_dung)}</span>
+                                <span class="text-xs text-slate-600 truncate">${esc(r.noi_dung)}</span>
                                 <span class="shrink-0 flex items-center gap-1 text-[11px] font-semibold ${r.thanh_toan === 'Chưa Thanh Toán' ? 'text-amber-600' : 'text-emerald-600'}">
                                     <span class="w-1.5 h-1.5 rounded-full ${r.thanh_toan === 'Chưa Thanh Toán' ? 'bg-amber-500' : 'bg-emerald-500'}"></span>${esc(r.thanh_toan)}
                                 </span>
                             </div>
-                        </button>
+                            <div class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-slate-500">
+                                <span>${esc(r.ngay)}</span>
+                                ${r.ten_khach_hang ? `<span>Khách: <b class="text-slate-700">${esc(r.ten_khach_hang)}</b></span>` : ''}
+                                ${r.so_dien_thoai ? `<a href="tel:${esc(r.so_dien_thoai)}" onclick="event.stopPropagation()" class="font-semibold text-blue-600">${esc(r.so_dien_thoai)}</a>` : ''}
+                                ${r.nguoi_thuc_hien ? `<span>Thợ: <b class="text-slate-700">${esc(r.nguoi_thuc_hien)}</b></span>` : ''}
+                            </div>
+                        </div>
                         <div class="hidden px-4 pb-3 text-xs text-slate-500 space-y-2">
                             <div class="bg-slate-50 rounded-xl p-3 space-y-1">
                                 <div>#${esc(r.stt)} · ${esc(r.ngay)} · ${esc(r.dich_vu)}</div>
-                                <div class="text-slate-700">${esc(r.noi_dung)}</div>
-                                ${r.nguoi_thuc_hien ? `<div>Thợ: <b class="text-slate-700">${esc(r.nguoi_thuc_hien)}</b></div>` : ''}
+                                <div class="text-slate-700 text-sm">${esc(r.noi_dung)}</div>
+                                <div>Báo giá: <b class="text-emerald-600">${r.bao_gia ? esc(r.bao_gia) + 'đ' : 'Chưa báo giá'}</b> · ${esc(r.thanh_toan)}</div>
+                                ${r.nguoi_thuc_hien ? `<div>Người thực hiện: <b class="text-slate-700">${esc(r.nguoi_thuc_hien)}</b></div>` : ''}
+                                ${r.ten_khach_hang ? `<div>Khách hàng: <b class="text-slate-700">${esc(r.ten_khach_hang)}</b></div>` : ''}
+                                ${r.so_dien_thoai ? `<div>SĐT: <a href="tel:${esc(r.so_dien_thoai)}" class="font-semibold text-blue-600">${esc(r.so_dien_thoai)}</a></div>` : ''}
                                 ${r.ghi_chu ? `<div class="text-amber-700">Ghi chú: ${esc(r.ghi_chu)}</div>` : ''}
                             </div>
                             <div class="grid grid-cols-2 gap-2">
@@ -858,7 +909,9 @@
                         <td class="py-3 px-3 text-right font-bold text-emerald-600">${r.bao_gia ? r.bao_gia + 'đ' : '<span class="text-slate-300 font-normal">—</span>'}</td>
                         <td class="py-3 px-3 text-center">${getPaymentBadgeHtml(r.thanh_toan)}</td>
                         <td class="py-3 px-3 text-slate-700 font-medium">${r.nguoi_thuc_hien || '<span class="text-slate-300 font-normal">—</span>'}</td>
-                        <td class="py-3 px-3 text-slate-500 text-xs">${r.ghi_chu || '<span class="text-slate-300">—</span>'}</td>
+                        <td class="py-3 px-3 text-slate-500 text-xs break-words max-w-[240px]">${r.ghi_chu ? esc(r.ghi_chu) : '<span class="text-slate-300">—</span>'}</td>
+                        <td class="py-3 pl-6 pr-4 text-slate-700 font-medium whitespace-nowrap border-l border-slate-100">${r.ten_khach_hang ? esc(r.ten_khach_hang) : '<span class="text-slate-300 font-normal">—</span>'}</td>
+                        <td class="py-3 px-5 text-center text-xs whitespace-nowrap">${r.so_dien_thoai ? `<a href="tel:${esc(r.so_dien_thoai)}" class="text-blue-600 hover:underline font-medium">${esc(r.so_dien_thoai)}</a>` : '<span class="text-slate-300">—</span>'}</td>
                         <td class="py-3 px-2 text-center whitespace-nowrap">
                             <button onclick="openEdit(${i})" class="text-slate-300 hover:text-blue-600 px-1.5 py-1 rounded-lg hover:bg-blue-50 transition text-xs font-semibold" title="Sửa dòng này">Sửa</button>
                             <button
@@ -921,7 +974,7 @@
                     class="mt-3 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">Thử lại</button>
             </div>`;
             document.getElementById('mobileRecordList').innerHTML = html;
-            document.getElementById('excelTableBody').innerHTML = `<tr><td colspan="11">${html}</td></tr>`;
+            document.getElementById('excelTableBody').innerHTML = `<tr><td colspan="13">${html}</td></tr>`;
         }
 
         function cacheKeyFor(month) {
@@ -952,7 +1005,7 @@
             if (!shownFromCache) {
                 const loading = '<div class="py-8 text-center text-slate-400 text-xs">Đang tải dữ liệu...</div>';
                 document.getElementById('mobileRecordList').innerHTML = loading;
-                document.getElementById('excelTableBody').innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-400 text-xs">Đang tải dữ liệu...</td></tr>`;
+                document.getElementById('excelTableBody').innerHTML = `<tr><td colspan="13" class="py-10 text-center text-slate-400 text-xs">Đang tải dữ liệu...</td></tr>`;
             }
 
             const controller = new AbortController();
@@ -1013,6 +1066,8 @@
             document.getElementById('editThanhToan').value = r.thanh_toan || 'Chưa Thanh Toán';
             document.getElementById('editNguoiTH').value = r.nguoi_thuc_hien || '';
             document.getElementById('editGhiChu').value = r.ghi_chu || '';
+            document.getElementById('editTenKhach').value = r.ten_khach_hang || '';
+            document.getElementById('editSdt').value = r.so_dien_thoai || '';
             document.getElementById('editError').classList.add('hidden');
             document.getElementById('editOverlay').classList.remove('hidden');
         }
@@ -1035,7 +1090,9 @@
                 bao_gia: document.getElementById('editBaoGia').value.trim(),
                 thanh_toan: document.getElementById('editThanhToan').value,
                 nguoi_thuc_hien: document.getElementById('editNguoiTH').value.trim(),
-                ghi_chu: document.getElementById('editGhiChu').value.trim()
+                ghi_chu: document.getElementById('editGhiChu').value.trim(),
+                ten_khach_hang: document.getElementById('editTenKhach').value.trim(),
+                so_dien_thoai: document.getElementById('editSdt').value.trim()
             };
             btn.disabled = true;
             try {

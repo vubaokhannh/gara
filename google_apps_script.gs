@@ -1,6 +1,6 @@
 /**
  * GOOGLE APPS SCRIPT — TỰ ĐỘNG LƯU DỮ LIỆU GARA THEO TỪNG THÁNG TRÊN GOOGLE DRIVE
- * 10 CỘT CHUẨN: STT | Ngày | Biển Số | Hiệu Xe | Dịch vụ | Nội Dung | Báo Giá Dịch Vụ | Thanh Toán | Người Thực Hiện | Ghi Chú
+ * CÁC CỘT: STT | Ngày | Biển Số | Hiệu Xe | Dịch vụ | Nội Dung | Báo Giá Dịch Vụ | Thanh Toán | Người Thực Hiện | Ghi Chú | Số Điện Thoại | Tên Khách Hàng (+ cột ID ẩn ở cuối)
  *
  * HƯỚNG DẪN CÀI ĐẶT / CẬP NHẬT:
  * 1. Truy cập https://script.google.com -> Mở dự án Gara của bạn.
@@ -21,8 +21,11 @@ const HEADERS = [
   "Báo Giá Dịch Vụ",
   "Thanh Toán",
   "Người Thực Hiện",
-  "Ghi Chú"
+  "Ghi Chú",
+  "Số Điện Thoại",
+  "Tên Khách Hàng",
 ];
+const BASE_COLS = 10; // 10 cột chuẩn ban đầu
 
 // Điền link Render của bạn vào đây (VD: "https://gara.onrender.com") để tự động giữ Server thức 24/24
 const RENDER_APP_URL = "https://gara.onrender.com";
@@ -39,7 +42,9 @@ function getOrCreateFolder() {
     }
   }
   const folders = DriveApp.getFoldersByName(FOLDER_NAME);
-  const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(FOLDER_NAME);
+  const folder = folders.hasNext()
+    ? folders.next()
+    : DriveApp.createFolder(FOLDER_NAME);
   cache.put("folder_id", folder.getId(), 21600);
   cache.put("folder_url", folder.getUrl(), 21600);
   return folder;
@@ -61,17 +66,19 @@ function applyHeaderStyling(sheet) {
   sheet.setFrozenRows(1);
   sheet.setRowHeight(1, 32);
 
-  // Cài đặt độ rộng tối ưu cho 10 cột
-  sheet.setColumnWidth(1, 55);   // STT
-  sheet.setColumnWidth(2, 105);  // Ngày
-  sheet.setColumnWidth(3, 120);  // Biển Số
-  sheet.setColumnWidth(4, 135);  // Hiệu Xe
-  sheet.setColumnWidth(5, 160);  // Dịch vụ
-  sheet.setColumnWidth(6, 240);  // Nội Dung
-  sheet.setColumnWidth(7, 130);  // Báo Giá Dịch Vụ
-  sheet.setColumnWidth(8, 130);  // Thanh Toán
-  sheet.setColumnWidth(9, 130);  // Người Thực Hiện
+  // Cài đặt độ rộng tối ưu cho các cột
+  sheet.setColumnWidth(1, 55); // STT
+  sheet.setColumnWidth(2, 105); // Ngày
+  sheet.setColumnWidth(3, 120); // Biển Số
+  sheet.setColumnWidth(4, 135); // Hiệu Xe
+  sheet.setColumnWidth(5, 160); // Dịch vụ
+  sheet.setColumnWidth(6, 240); // Nội Dung
+  sheet.setColumnWidth(7, 130); // Báo Giá Dịch Vụ
+  sheet.setColumnWidth(8, 130); // Thanh Toán
+  sheet.setColumnWidth(9, 130); // Người Thực Hiện
   sheet.setColumnWidth(10, 180); // Ghi Chú
+  sheet.setColumnWidth(11, 120); // Số Điện Thoại
+  sheet.setColumnWidth(12, 170); // Tên Khách Hàng
 }
 
 // Ghi 1 dòng ở dạng CHỮ (tránh Sheets tự đổi biển số như "50E-72167" thành số khoa học 0,00E+00)
@@ -91,22 +98,45 @@ function appendRowAsText(sheet, values) {
 
 // Căn lề 1 dòng dữ liệu vừa thêm (gộp thành 2 lệnh thay vì 6)
 function styleDataRow(sheet, row) {
-  sheet.getRangeList(["A" + row, "B" + row, "C" + row, "E" + row, "H" + row]).setHorizontalAlignment("center");
+  sheet
+    .getRangeList(["A" + row, "B" + row, "C" + row, "E" + row, "H" + row])
+    .setHorizontalAlignment("center");
   sheet.getRange(row, 7).setHorizontalAlignment("right");
 }
 
-const ID_COL = 11;          // Cột ID ẩn (mã duy nhất của mỗi bản ghi)
+const ID_COL = 13; // Cột ID ẩn (mã duy nhất của mỗi bản ghi) - nằm sau Số Điện Thoại và Tên Khách Hàng
 const ID_HEADER = "ID";
 
 function newId() {
   return Utilities.getUuid().replace(/-/g, "").slice(0, 12);
 }
 
-// Thêm cột ID (ẩn) để mỗi bản ghi có mã duy nhất, bảng vẫn hiển thị 10 cột chuẩn
+// Bảo đảm bố cục cột: [10 cột chuẩn] + Số Điện Thoại + Tên Khách Hàng + ID (ẩn).
+// Tự nâng cấp sheet cũ mà không mất dữ liệu:
+//   - Sheet 10 cột (chưa có gì ở cột K): thêm 2 cột mới + cột ID.
+//   - Sheet bản trước (cột ID đang nằm ở K): chèn 2 cột mới phía trước để ID dịch sang M, dữ liệu giữ nguyên.
 function ensureIdColumn(sheet) {
   if (sheet.getRange(1, ID_COL).getValue() !== ID_HEADER) {
+    if (sheet.getRange(1, 11).getValue() === ID_HEADER) {
+      sheet.insertColumnsBefore(11, 2);
+      sheet.showColumns(11, 2);
+    }
     sheet.getRange(1, ID_COL).setValue(ID_HEADER);
   }
+
+  const extra = sheet.getRange(1, 11, 1, 2);
+  const cur = extra.getValues()[0];
+  if (cur[0] !== HEADERS[10] || cur[1] !== HEADERS[11]) {
+    extra.setValues([[HEADERS[10], HEADERS[11]]]);
+    extra.setBackground("#1E40AF");
+    extra.setFontColor("#FFFFFF");
+    extra.setFontWeight("bold");
+    extra.setHorizontalAlignment("center");
+    extra.setVerticalAlignment("middle");
+    sheet.setColumnWidth(11, 120);
+    sheet.setColumnWidth(12, 170);
+  }
+
   if (!sheet.isColumnHiddenByUser(ID_COL)) {
     sheet.hideColumns(ID_COL);
   }
@@ -166,7 +196,7 @@ function getOrCreateMonthlySheet(monthKey) {
   const mk = monthKey || Utilities.formatDate(new Date(), "GMT+7", "MM_yyyy");
 
   // Đường nhanh: đã từng kiểm tra bảng tháng này -> mở thẳng bằng ID, bỏ qua duyệt thư mục
-  const cachedId = CacheService.getScriptCache().get("ss_" + mk);
+  const cachedId = CacheService.getScriptCache().get("ss2_" + mk);
   if (cachedId) {
     try {
       return SpreadsheetApp.openById(cachedId);
@@ -184,8 +214,11 @@ function getOrCreateMonthlySheet(monthKey) {
     const file = files.next();
     ss = SpreadsheetApp.open(file);
     const sheet = ss.getActiveSheet();
-    // Tự động nâng cấp lên 10 cột chuẩn nếu file cũ chưa đủ
-    if (sheet.getLastColumn() < HEADERS.length || sheet.getRange(1, 1).getValue() !== "STT") {
+    // Tự động dựng lại tiêu đề nếu file hỏng / quá cũ (chưa đủ 10 cột chuẩn)
+    if (
+      sheet.getLastColumn() < BASE_COLS ||
+      sheet.getRange(1, 1).getValue() !== "STT"
+    ) {
       applyHeaderStyling(sheet);
     }
   } else {
@@ -200,13 +233,13 @@ function getOrCreateMonthlySheet(monthKey) {
   }
 
   ensureIdColumn(ss.getActiveSheet());
-  CacheService.getScriptCache().put("ss_" + mk, ss.getId(), 3600);
+  CacheService.getScriptCache().put("ss2_" + mk, ss.getId(), 3600);
   return ss;
 }
 
 // Đường đọc nhanh: bảng tháng đã có sẵn và đủ ID -> đọc ngay, không cần khóa / duyệt thư mục
 function tryFastList(monthKey) {
-  const id = CacheService.getScriptCache().get("ss_" + monthKey);
+  const id = CacheService.getScriptCache().get("ss2_" + monthKey);
   if (!id) return null;
   let ss;
   try {
@@ -217,13 +250,18 @@ function tryFastList(monthKey) {
   const sheet = ss.getActiveSheet();
   if (sheet.getRange(1, ID_COL).getValue() !== ID_HEADER) return null;
   const records = readRecordsFromSheet(ss, monthKey);
-  if (records.some(function (r) { return !r.id; })) return null;
+  if (
+    records.some(function (r) {
+      return !r.id;
+    })
+  )
+    return null;
   return jsonResponse({
     success: true,
     month_key: monthKey,
     file_url: ss.getUrl(),
     folder_url: getFolderUrl(),
-    records: records
+    records: records,
   });
 }
 
@@ -241,7 +279,7 @@ function listAvailableMonths() {
         month_key: m[1] + "_" + m[2],
         label: "Tháng " + m[1] + "/" + m[2],
         filename: name + ".xlsx",
-        file_url: f.getUrl()
+        file_url: f.getUrl(),
       });
     }
   }
@@ -255,14 +293,16 @@ function readRecordsFromSheet(ss, monthKey) {
 
   if (lastRow >= 2) {
     const numCols = Math.max(sheet.getLastColumn(), ID_COL);
-    const values = sheet.getRange(2, 1, lastRow - 1, numCols).getDisplayValues();
+    const values = sheet
+      .getRange(2, 1, lastRow - 1, numCols)
+      .getDisplayValues();
     for (let i = 0; i < values.length; i++) {
       const row = values[i];
       if (!row[1] && !row[2] && !row[3] && !row[5]) continue;
       records.push({
         id: row[ID_COL - 1] || "",
         row_id: i + 2,
-        stt: row[0] || (i + 1),
+        stt: row[0] || i + 1,
         month_key: monthKey,
         ngay: row[1] || "",
         bien_so: row[2] || "",
@@ -272,7 +312,9 @@ function readRecordsFromSheet(ss, monthKey) {
         bao_gia: row[6] || "",
         thanh_toan: row[7] || "Chưa Thanh Toán",
         nguoi_thuc_hien: row[8] || "",
-        ghi_chu: row[9] || ""
+        ghi_chu: row[9] || "",
+        so_dien_thoai: row[10] || "",
+        ten_khach_hang: row[11] || "",
       });
     }
   }
@@ -283,13 +325,14 @@ function doGet(e) {
   try {
     const params = (e && e.parameter) || {};
     const action = params.action || "list";
-    const monthKey = params.month_key || Utilities.formatDate(new Date(), "GMT+7", "MM_yyyy");
+    const monthKey =
+      params.month_key || Utilities.formatDate(new Date(), "GMT+7", "MM_yyyy");
 
     if (action === "months") {
       return jsonResponse({
         success: true,
         months: listAvailableMonths(),
-        folder_url: getFolderUrl()
+        folder_url: getFolderUrl(),
       });
     }
 
@@ -305,7 +348,8 @@ function doGet(e) {
 
       // THÊM bản ghi (an toàn khi gửi lại: cùng ID thì không ghi trùng)
       if (action === "append") {
-        if (!params.bien_so) return jsonResponse({ success: false, error: "Thiếu biển số" });
+        if (!params.bien_so)
+          return jsonResponse({ success: false, error: "Thiếu biển số" });
 
         const id = params.id || newId();
         const existing = findRowById(sheet, id);
@@ -317,12 +361,14 @@ function doGet(e) {
             row_id: existing,
             stt: sheet.getRange(existing, 1).getValue(),
             file_url: fileUrl,
-            folder_url: getFolderUrl()
+            folder_url: getFolderUrl(),
           });
         }
 
         const stt = Math.max(sheet.getLastRow(), 1);
-        const ngay = params.ngay || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy");
+        const ngay =
+          params.ngay ||
+          Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy");
         const newRow = appendRowAsText(sheet, [
           stt,
           ngay,
@@ -334,7 +380,9 @@ function doGet(e) {
           params.thanh_toan || "Chưa Thanh Toán",
           params.nguoi_thuc_hien || "",
           params.ghi_chu || "",
-          id
+          params.so_dien_thoai || "",
+          params.ten_khach_hang || "",
+          id,
         ]);
         styleDataRow(sheet, newRow);
 
@@ -344,7 +392,7 @@ function doGet(e) {
           row_id: newRow,
           stt: stt,
           file_url: fileUrl,
-          folder_url: getFolderUrl()
+          folder_url: getFolderUrl(),
         });
       }
 
@@ -352,24 +400,38 @@ function doGet(e) {
       if (action === "update" || action === "delete") {
         const row = findRowById(sheet, params.id);
         if (row < 2) {
-          return jsonResponse({ success: false, not_found: true, error: "Không tìm thấy bản ghi (có thể đã bị xóa)." });
+          return jsonResponse({
+            success: false,
+            not_found: true,
+            error: "Không tìm thấy bản ghi (có thể đã bị xóa).",
+          });
         }
 
         if (action === "update") {
-          const range = sheet.getRange(row, 2, 1, 9);
-          range.setNumberFormats([["@", "@", "@", "@", "@", "@", "@", "@", "@"]]);
-          range.setValues([[
-            params.ngay || "",
-            (params.bien_so || "").toUpperCase(),
-            params.hieu_xe || "",
-            params.dich_vu || "Bảo Trì & Sửa Chữa",
-            params.noi_dung || "",
-            params.bao_gia || "",
-            params.thanh_toan || "Chưa Thanh Toán",
-            params.nguoi_thuc_hien || "",
-            params.ghi_chu || ""
-          ]]);
-          return jsonResponse({ success: true, id: params.id, file_url: fileUrl });
+          const range = sheet.getRange(row, 2, 1, 11);
+          range.setNumberFormats([
+            ["@", "@", "@", "@", "@", "@", "@", "@", "@", "@", "@"],
+          ]);
+          range.setValues([
+            [
+              params.ngay || "",
+              (params.bien_so || "").toUpperCase(),
+              params.hieu_xe || "",
+              params.dich_vu || "Bảo Trì & Sửa Chữa",
+              params.noi_dung || "",
+              params.bao_gia || "",
+              params.thanh_toan || "Chưa Thanh Toán",
+              params.nguoi_thuc_hien || "",
+              params.ghi_chu || "",
+              params.so_dien_thoai || "",
+              params.ten_khach_hang || "",
+            ],
+          ]);
+          return jsonResponse({
+            success: true,
+            id: params.id,
+            file_url: fileUrl,
+          });
         }
 
         sheet.deleteRow(row);
@@ -384,7 +446,7 @@ function doGet(e) {
         month_key: monthKey,
         file_url: fileUrl,
         folder_url: getFolderUrl(),
-        records: readRecordsFromSheet(ss, monthKey)
+        records: readRecordsFromSheet(ss, monthKey),
       });
     });
   } catch (err) {
@@ -393,8 +455,9 @@ function doGet(e) {
 }
 
 function jsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
+    ContentService.MimeType.JSON,
+  );
 }
 
 /**
@@ -407,7 +470,7 @@ function keepRenderAwake() {
   try {
     const res = UrlFetchApp.fetch(baseUrl + "/health", {
       method: "get",
-      muteHttpExceptions: true
+      muteHttpExceptions: true,
     });
     Logger.log("Ping /health status: " + res.getResponseCode());
   } catch (err) {
@@ -422,9 +485,6 @@ function setupKeepAliveTrigger() {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
-  ScriptApp.newTrigger("keepRenderAwake")
-    .timeBased()
-    .everyMinutes(10)
-    .create();
+  ScriptApp.newTrigger("keepRenderAwake").timeBased().everyMinutes(10).create();
   Logger.log("Đã bật chế độ giữ Server Render thức 24/24 (Ping mỗi 10 phút)!");
 }
