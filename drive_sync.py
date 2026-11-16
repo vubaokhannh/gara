@@ -94,22 +94,27 @@ def _call_apps_script(webhook_url: str, params: dict, retries: int = 1) -> dict:
     nên tự thử lại tối đa `retries` lần khi lỗi mạng / quá thời gian.
     """
     last_err = ""
+    started = time.time()
     for attempt in range(retries + 1):
         try:
-            resp = _session.get(webhook_url, params=params, timeout=20)
+            # (kết nối tối đa 5s, chờ trả lời tối đa 15s): kết nối tới nhiều địa chỉ cũng không kéo dài vô hạn
+            resp = _session.get(webhook_url, params=params, timeout=(5, 15))
             resp.raise_for_status()
             return resp.json()
         except Exception as e:  # noqa: BLE001
             last_err = _describe_error(e)
-            if attempt < retries:
+            # không thử lại nếu đã mất quá 25 giây: báo lỗi sớm còn hơn để người dùng chờ
+            if attempt < retries and time.time() - started < 25:
                 time.sleep(1.0 * (attempt + 1))
+            else:
+                break
     raise DriveError(f"Không kết nối được Google Drive: {last_err}")
 
 
 def _describe_error(e: Exception) -> str:
     """Mô tả lỗi bằng tiếng Việt, KHÔNG kèm link Apps Script (link là bí mật: ai có link cũng sửa được dữ liệu)."""
     if isinstance(e, requests.exceptions.Timeout):
-        return "Google trả lời quá chậm (quá 20 giây), thử lại sau ít giây."
+        return "Google trả lời quá chậm, thử lại sau ít giây."
     if isinstance(e, requests.exceptions.HTTPError):
         code = e.response.status_code if e.response is not None else "?"
         if code in (401, 403):

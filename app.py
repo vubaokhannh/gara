@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+import faulthandler
 import io
 import os
 import socket
+import sys
 import threading
-from flask import Flask, render_template, request, jsonify, send_file
+import time
+from flask import Flask, render_template, request, jsonify, send_file, g
 from parser import parse_voice_text, validate_record, format_price_vn
 from excel_manager import (
     ensure_excel_file,
@@ -19,6 +22,48 @@ import storage
 from storage import StorageError
 
 app = Flask(__name__)
+
+
+# ---- Theo dõi yêu cầu chậm / bị kẹt: ghi vào Logs của Render để biết chính xác kẹt ở đâu ----
+_inflight: dict = {}
+_inflight_lock = threading.Lock()
+
+
+@app.before_request
+def _track_start():
+    g._req_key = object()
+    g._req_t0 = time.time()
+    with _inflight_lock:
+        _inflight[g._req_key] = (g._req_t0, request.method, request.path)
+
+
+@app.teardown_request
+def _track_end(exc):
+    key = getattr(g, "_req_key", None)
+    if key is None:
+        return
+    with _inflight_lock:
+        _inflight.pop(key, None)
+    elapsed = time.time() - getattr(g, "_req_t0", time.time())
+    if elapsed > 8:
+        print(f"[SLOW] {request.method} {request.path} mất {elapsed:.1f}s", file=sys.stderr, flush=True)
+
+
+def _watchdog() -> None:
+    last_dump = 0.0
+    while True:
+        time.sleep(15)
+        now = time.time()
+        with _inflight_lock:
+            stuck = [(round(now - t0), m, path) for (t0, m, path) in _inflight.values() if now - t0 > 45]
+        if stuck and now - last_dump > 120:
+            last_dump = now
+            print(f"[WATCHDOG] yêu cầu đang chạy quá 45 giây (giây, phương thức, đường dẫn): {stuck}", file=sys.stderr, flush=True)
+            faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+
+
+if os.environ.get("GARA_WATCHDOG", "1") == "1":
+    threading.Thread(target=_watchdog, daemon=True).start()
 
 
 def get_local_ip() -> str:

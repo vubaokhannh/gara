@@ -79,17 +79,21 @@ def get_records(month_param: str = "") -> dict:
     """Trả về {month_key, filename, records (mới nhất trước), months}."""
     mk = get_month_key_from_date(month_param)
     if using_drive():
-        # Lấy dữ liệu tháng và danh sách tháng SONG SONG (khi chưa có cache, đỡ phải chờ nối tiếp 2 lần)
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        # Lấy dữ liệu tháng và danh sách tháng SONG SONG. Danh sách tháng chỉ là phụ: chờ tối đa 8 giây,
+        # quá thời gian thì bỏ qua (không chặn việc xem dữ liệu).
+        pool = ThreadPoolExecutor(max_workers=2)
+        try:
             months_future = pool.submit(drive_months)
             try:
                 data, stale = drive_fetch_month(mk)
             except DriveError as e:
                 raise StorageError(str(e)) from e
             try:
-                raw_months = months_future.result()
-            except DriveError:
-                raw_months = []  # danh sách tháng lỗi không được chặn việc xem dữ liệu
+                raw_months = months_future.result(timeout=8)
+            except Exception:  # noqa: BLE001  (DriveError hoặc quá thời gian)
+                raw_months = []
+        finally:
+            pool.shutdown(wait=False)
         records = [_shape(r, mk) for r in data.get("records", [])]
         records.reverse()
         months = [
