@@ -1,26 +1,21 @@
 # -*- coding: utf-8 -*-
+import io
 import os
 import socket
 from flask import Flask, render_template, request, jsonify, send_file
 from parser import parse_voice_text, validate_record, format_price_vn
 from excel_manager import (
     ensure_excel_file,
-    append_to_excel,
-    read_all_records,
-    delete_record_by_row,
-    list_monthly_files,
     get_month_key_from_date,
-    replace_month_records_from_drive,
+    build_xlsx_bytes,
 )
 from drive_sync import (
     verify_pin,
-    get_drive_webhook_url,
     set_drive_webhook_url,
-    sync_append_to_drive,
-    sync_delete_from_drive,
-    fetch_month_from_drive,
     get_saved_drive_links,
 )
+import storage
+from storage import StorageError
 
 app = Flask(__name__)
 
@@ -42,6 +37,21 @@ def _check_request_pin() -> bool:
     return verify_pin(pin)
 
 
+def _storage_error(err: StorageError, message: str = ""):
+    text = message or "Không lưu được lên Google Drive."
+    return (
+        jsonify(
+            {
+                "success": False,
+                "retryable": True,
+                "errors": [f"{text} Dữ liệu vẫn giữ trên form, bấm Lưu để thử lại. ({err})"],
+                "message": str(err),
+            }
+        ),
+        502,
+    )
+
+
 @app.route("/health", methods=["GET"])
 def health_check():
     """
@@ -53,14 +63,13 @@ def health_check():
 
 @app.route("/")
 def index():
-    current_month_file = ensure_excel_file()
     local_ip = get_local_ip()
     port = int(os.environ.get("PORT", 5000))
     lan_url = f"http://{local_ip}:{port}"
     return render_template(
         "index.html",
         lan_url=lan_url,
-        current_filename=os.path.basename(current_month_file),
+        current_filename=f"gara_{get_month_key_from_date()}.xlsx",
     )
 
 
@@ -83,44 +92,24 @@ def api_drive_config():
         return jsonify({"success": False, "errors": ["Vui lòng nhập đúng mã PIN để cấu hình Google Drive."]}), 401
 
     payload = request.get_json(silent=True) or {}
-    webhook_url = payload.get("webhook_url", "")
-    saved_url = set_drive_webhook_url(webhook_url)
-
-    # Thử đồng bộ ngay tháng hiện tại nếu vừa dán link mới
-    drive_info = {}
-    if saved_url:
-        drive_info = fetch_month_from_drive(month_key)
-        if drive_info.get("success") and drive_info.get("records"):
-            replace_month_records_from_drive(month_key, drive_info["records"])
-
-    return jsonify(
-        {
-            "success": True,
-            "configured": bool(saved_url),
-            "drive_links": get_saved_drive_links(month_key),
-            "drive_pull": bool(drive_info.get("success")),
-        }
-    )
+    saved_url = set_drive_webhook_url(payload.get("webhook_url", ""))
+    return jsonify({"success": True, "configured": bool(saved_url), "drive_links": get_saved_drive_links(month_key)})
 
 
 @app.route("/api/parse", methods=["POST"])
 def api_parse():
-    """
-    Nhận văn bản từ giọng nói (Web Speech API hoặc bàn phím giọng nói điện thoại),
-    bóc tách thành 5 trường và kiểm tra hợp lệ.
-    """
+    """Nhận văn bản từ giọng nói, bóc tách thành các trường và kiểm tra hợp lệ."""
     payload = request.get_json(silent=True) or {}
-    text = payload.get("text", "")
-    result = parse_voice_text(text)
+    result = parse_voice_text(payload.get("text", ""))
     return jsonify(result)
 
 
 @app.route("/api/save", methods=["POST"])
 def api_save():
     """
-    Kiểm tra mã PIN + tính hợp lệ, sau đó:
-      1. Ghi vào file Excel của tháng tương ứng (gara_MM_YYYY.xlsx)
-      2. Tự động đồng bộ sang Google Drive (tự tạo file tháng trên Drive nếu chưa có)
+    Kiểm tra PIN + tính hợp lệ rồi lưu.
+    Chế độ Google Drive: ghi thẳng lên Google Sheet (nơi lưu duy nhất). Lỗi -> báo thất bại để thử lại.
+    Gửi lại cùng `id` thì không bị ghi trùng.
     """
     if not _check_request_pin():
         return jsonify({"success": False, "require_pin": True, "errors": ["Mã PIN không đúng hoặc chưa nhập mã PIN."]}), 401
@@ -137,109 +126,124 @@ def api_save():
     if not is_valid:
         return jsonify({"success": False, "errors": errors}), 400
 
-    # 1. Lưu vào file .xlsx trên Server
-    saved_row = append_to_excel(cleaned)
-
-    # 2. Đồng bộ tự động lên Google Drive theo tháng
-    drive_result = sync_append_to_drive(saved_row["month_key"], saved_row)
+    try:
+        saved_row = storage.add_record(cleaned, payload.get("id", ""))
+    except StorageError as e:
+        return _storage_error(e)
 
     return jsonify(
         {
             "success": True,
             "message": f"Đã lưu vào {saved_row['filename']}!",
             "record": saved_row,
-            "drive": drive_result,
         }
     )
 
 
 @app.route("/api/months", methods=["GET"])
 def api_months():
-    """Lấy danh sách các file Excel theo từng tháng hiện có."""
-    months = list_monthly_files()
-    current_mk = get_month_key_from_date()
-    return jsonify({"months": months, "current_month": current_mk})
+    """Danh sách các tháng hiện có."""
+    try:
+        data = storage.get_records(request.args.get("month", ""))
+    except StorageError as e:
+        return jsonify({"success": False, "message": str(e)}), 502
+    return jsonify({"months": data["months"], "current_month": get_month_key_from_date()})
 
 
 @app.route("/api/records", methods=["GET"])
 def api_records():
-    """
-    Lấy danh sách dữ liệu của tháng được chọn (Yêu cầu đúng mã PIN).
-    Nếu file local đang trống (do Cloud Server mới khởi động lại) và đã nối Google Drive,
-    tự động kéo dữ liệu của tháng đó từ Google Drive về file .xlsx!
-    """
+    """Lấy dữ liệu của tháng được chọn (cần đúng mã PIN)."""
     if not _check_request_pin():
         return jsonify({"success": False, "require_pin": True, "message": "Vui lòng nhập mã PIN để truy cập."}), 401
 
-    month_param = request.args.get("month", "")
-    force_sync = request.args.get("sync_drive", "") == "1"
-    month_key, filename, records = read_all_records(month_param)
+    try:
+        data = storage.get_records(request.args.get("month", ""))
+    except StorageError as e:
+        return jsonify({"success": False, "message": f"Không đọc được dữ liệu từ Google Drive: {e}"}), 502
 
-    if (len(records) == 0 or force_sync) and get_drive_webhook_url():
-        drive_data = fetch_month_from_drive(month_key)
-        if drive_data.get("success") and isinstance(drive_data.get("records"), list):
-            if len(drive_data["records"]) > 0 or force_sync:
-                replace_month_records_from_drive(month_key, drive_data["records"])
-                month_key, filename, records = read_all_records(month_key)
-
+    records = data["records"]
     total_revenue = sum(r.get("gia_int", 0) for r in records)
-    months = list_monthly_files()
-    drive_links = get_saved_drive_links(month_key)
 
     return jsonify(
         {
-            "month_key": month_key,
-            "filename": filename,
-            "months": months,
+            "month_key": data["month_key"],
+            "filename": data["filename"],
+            "months": data["months"],
             "records": records,
             "count": len(records),
             "total_revenue": format_price_vn(total_revenue) if total_revenue else "0",
-            "drive": drive_links,
+            "drive": get_saved_drive_links(data["month_key"]),
         }
     )
 
 
-@app.route("/api/records/<int:row_id>", methods=["DELETE"])
-def api_delete_record(row_id: int):
-    """Xóa 1 dòng trong file Excel của tháng tương ứng và đồng bộ xóa trên Google Drive."""
+@app.route("/api/records/<rec_id>", methods=["PUT"])
+def api_update_record(rec_id: str):
+    """Sửa 1 bản ghi theo ID."""
+    if not _check_request_pin():
+        return jsonify({"success": False, "require_pin": True, "errors": ["Vui lòng nhập đúng mã PIN để sửa dữ liệu."]}), 401
+
+    payload = request.get_json(silent=True) or {}
+    is_valid, errors, cleaned = validate_record(payload)
+    if not is_valid:
+        return jsonify({"success": False, "errors": errors}), 400
+
+    try:
+        updated = storage.update_record(request.args.get("month", ""), rec_id, cleaned)
+    except StorageError as e:
+        return _storage_error(e, "Không sửa được trên Google Drive.")
+    if not updated:
+        return jsonify({"success": False, "errors": ["Không tìm thấy dòng cần sửa (có thể đã bị xóa)."]}), 404
+    return jsonify({"success": True, "message": "Đã cập nhật dòng dữ liệu.", "record": updated})
+
+
+@app.route("/api/records/<rec_id>", methods=["DELETE"])
+def api_delete_record(rec_id: str):
+    """Xóa 1 bản ghi theo ID."""
     if not _check_request_pin():
         return jsonify({"success": False, "require_pin": True, "message": "Vui lòng nhập đúng mã PIN để xóa dữ liệu."}), 401
 
-    month_param = request.args.get("month", "")
-    mk = get_month_key_from_date(month_param)
-    ok = delete_record_by_row(row_id, mk)
+    try:
+        ok = storage.delete_record(request.args.get("month", ""), rec_id)
+    except StorageError as e:
+        return jsonify({"success": False, "message": f"Không xóa được trên Google Drive: {e}"}), 502
     if ok:
-        sync_delete_from_drive(mk, row_id)
         return jsonify({"success": True, "message": "Đã xóa dòng dữ liệu."})
     return jsonify({"success": False, "message": "Không tìm thấy dòng cần xóa."}), 404
 
 
 @app.route("/api/download-excel", methods=["GET"])
 def api_download_excel():
-    """Tải trực tiếp file Excel (.xlsx) của tháng được chọn (Yêu cầu đúng mã PIN)."""
+    """Tạo file Excel (.xlsx) của tháng được chọn từ dữ liệu hiện có và tải về (cần đúng mã PIN)."""
     if not _check_request_pin():
         return "Vui lòng nhập đúng mã PIN trên trang Web để tải file Excel.", 401
 
-    month_param = request.args.get("month", "")
-    file_path = ensure_excel_file(month_param)
-    filename = os.path.basename(file_path)
+    try:
+        data = storage.get_records(request.args.get("month", ""))
+    except StorageError as e:
+        return f"Không đọc được dữ liệu từ Google Drive: {e}", 502
+
+    ordered = list(reversed(data["records"]))  # cũ nhất trước
+    content = build_xlsx_bytes(ordered, data["month_key"])
     return send_file(
-        file_path,
+        io.BytesIO(content),
         as_attachment=True,
-        download_name=filename,
+        download_name=data["filename"],
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 
 if __name__ == "__main__":
-    current_file = ensure_excel_file()
     local_ip = get_local_ip()
     port = int(os.environ.get("PORT", 5000))
     print("=" * 64)
-    print("🚗 HỆ THỐNG NHẬP LIỆU GARA BẰNG GIỌNG NÓI (PUBLIC & GOOGLE DRIVE)")
-    print(f"📂 File Excel tháng hiện tại: {current_file}")
-    print(f"💻 Truy cập trên Máy tính:   http://127.0.0.1:{port}")
-    print(f"📱 Truy cập trên Điện thoại: http://{local_ip}:{port}")
-    print("🔑 Mã PIN mặc định:          1234 (Đổi bằng biến môi trường APP_PIN)")
+    print("HỆ THỐNG NHẬP LIỆU GARA BẰNG GIỌNG NÓI")
+    if storage.using_drive():
+        print("Nơi lưu dữ liệu:           Google Drive (Google Sheet)")
+    else:
+        print(f"Nơi lưu dữ liệu:           Excel local ({ensure_excel_file()})")
+    print(f"Truy cập trên Máy tính:   http://127.0.0.1:{port}")
+    print(f"Truy cập trên Điện thoại: http://{local_ip}:{port}")
+    print("Mã PIN mặc định:          1234 (Đổi bằng biến môi trường APP_PIN)")
     print("=" * 64)
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG", "1") == "1")

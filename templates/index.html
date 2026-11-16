@@ -316,6 +316,17 @@
                 </div>
             </div>
 
+            <!-- Bộ lọc theo ngày -->
+            <div class="px-4 sm:px-6 py-2.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2 text-xs">
+                <span class="font-semibold text-slate-500">Ngày:</span>
+                <input type="date" id="dateFilter" onchange="renderRecords()"
+                    class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                <button type="button" onclick="setDateFilter('today')"
+                    class="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100">Hôm nay</button>
+                <button type="button" id="btnClearDate" onclick="setDateFilter('all')"
+                    class="hidden px-2.5 py-1 rounded-lg bg-slate-200/70 text-slate-600 font-semibold hover:bg-slate-200">Tất cả</button>
+            </div>
+
             <!-- Danh sách dạng Card trên Mobile -->
             <div id="mobileRecordList" class="sm:hidden divide-y divide-slate-100">
                 <div class="py-8 text-center text-slate-400 text-xs">
@@ -384,11 +395,61 @@
         </div>
     </div>
 
+    <!-- FORM SỬA DỮ LIỆU -->
+    <div id="editOverlay" class="hidden fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-base font-bold text-slate-900">Sửa dữ liệu <span id="editTitle" class="text-slate-400 font-medium"></span></h2>
+                <button type="button" onclick="closeEdit()" class="text-slate-400 hover:text-slate-700 text-lg px-2">✕</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+                <label class="col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Ngày
+                    <input id="editNgay" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
+                <label class="col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Biển Số
+                    <input id="editBienSo" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm font-bold text-blue-700 uppercase" /></label>
+                <label class="col-span-2 sm:col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Hiệu Xe
+                    <input id="editHieuXe" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
+                <label class="col-span-2 sm:col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Dịch vụ
+                    <select id="editDichVu" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-semibold text-slate-800">
+                        <option value="Bảo Trì & Sửa Chữa">Bảo Trì & Sửa Chữa</option>
+                        <option value="Đồng Sơn TM">Đồng Sơn TM</option>
+                    </select></label>
+                <label class="col-span-2 text-[11px] font-semibold text-slate-400 uppercase">Nội Dung
+                    <input id="editNoiDung" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
+                <label class="col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Báo Giá
+                    <input id="editBaoGia" inputmode="numeric" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm font-bold text-emerald-600" /></label>
+                <label class="col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Thanh Toán
+                    <select id="editThanhToan" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-semibold text-slate-800">
+                        <option value="Chưa Thanh Toán">Chưa Thanh Toán</option>
+                        <option value="Tiền Mặt">Tiền Mặt</option>
+                        <option value="Chuyển Khoản">Chuyển Khoản</option>
+                    </select></label>
+                <label class="col-span-2 sm:col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Người Thực Hiện
+                    <input id="editNguoiTH" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
+                <label class="col-span-2 sm:col-span-1 text-[11px] font-semibold text-slate-400 uppercase">Ghi Chú
+                    <input id="editGhiChu" class="mt-1 w-full rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-sm normal-case font-medium text-slate-800" /></label>
+            </div>
+            <p id="editError" class="hidden mt-3 text-xs font-semibold text-red-600"></p>
+            <div class="mt-4 flex gap-2 justify-end">
+                <button type="button" onclick="closeEdit()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200">Hủy</button>
+                <button type="button" id="btnSaveEdit" onclick="saveEdit()" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let recognition = null;
         let isRecording = false;
         let debounceTimer = null;
         let selectedMonthKey = '';
+        let currentRecords = [];
+        let allRecords = [];
+        let currentFilename = '';
+        let editingRow = null;
+
+        function esc(v) {
+            return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
 
         function getSavedPin() {
             return localStorage.getItem('gara_app_pin') || '';
@@ -584,7 +645,17 @@
             }
         }
 
+        let saving = false;
+        let pendingSave = null; // { id, sig } giữ nguyên ID khi bấm Lưu lại để không bị ghi trùng
+
+        function makeId() {
+            const a = new Uint8Array(8);
+            crypto.getRandomValues(a);
+            return Array.from(a, b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+        }
+
         async function saveToExcel() {
+            if (saving) return;
             setTodayDefault();
             const payload = {
                 ngay: document.getElementById('fieldNgay').value.trim(),
@@ -598,6 +669,12 @@
                 ghi_chu: document.getElementById('fieldGhiChu').value.trim(),
                 pin: getSavedPin()
             };
+            const sig = JSON.stringify(payload);
+            if (!pendingSave || pendingSave.sig !== sig) {
+                pendingSave = { id: makeId(), sig };
+            }
+            payload.id = pendingSave.id;
+            saving = true;
 
             try {
                 const res = await fetch('/api/save', {
@@ -622,14 +699,9 @@
                     return;
                 }
 
-                let driveNote = '';
-                let alertType = 'success';
-                if (result.drive && result.drive.synced) {
-                    driveNote = ' & <b>Google Drive</b>';
-                } else if (result.drive && result.drive.error) {
-                    driveNote = `<br/><span class="text-amber-700">Chưa lưu được lên Drive: ${result.drive.error}</span>`;
-                    alertType = 'warning';
-                }
+                pendingSave = null;
+                const driveNote = '';
+                const alertType = 'success';
                 const giaText = result.record.bao_gia ? `: <b>${result.record.bao_gia}đ</b>` : '';
                 const staffText = result.record.nguoi_thuc_hien ? ` • Thợ: <b>${result.record.nguoi_thuc_hien}</b>` : '';
 
@@ -651,13 +723,16 @@
                 selectedMonthKey = result.record.month_key || selectedMonthKey;
                 await loadRecords(selectedMonthKey);
             } catch (err) {
-                showAlert('Lỗi khi lưu vào file Excel.', 'error');
+                showAlert('Mất kết nối, chưa lưu được. Dữ liệu vẫn giữ trên form, bấm Lưu để thử lại.', 'error');
+            } finally {
+                saving = false;
             }
         }
 
         function onMonthChange() {
             const sel = document.getElementById('monthSelector');
             selectedMonthKey = sel.value;
+            document.getElementById('dateFilter').value = '';
             loadRecords(selectedMonthKey);
         }
 
@@ -690,6 +765,106 @@
             return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">Bảo Trì</span>';
         }
 
+        function normDate(v) {
+            const m = String(v || '').match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            return m ? `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}` : String(v || '');
+        }
+
+        function setDateFilter(mode) {
+            const input = document.getElementById('dateFilter');
+            if (mode === 'today') {
+                const n = new Date();
+                input.value = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+            } else if (mode === 'all') {
+                input.value = '';
+            }
+            renderRecords();
+        }
+
+        function renderRecords() {
+            const iso = document.getElementById('dateFilter').value;
+            const filterDate = iso ? iso.split('-').reverse().join('/') : '';
+            const list = filterDate ? allRecords.filter(r => normDate(r.ngay) === filterDate) : allRecords;
+            document.getElementById('recordCount').innerText = filterDate ? `${list.length}/${allRecords.length}` : allRecords.length;
+            document.getElementById('btnClearDate').classList.toggle('hidden', !filterDate);
+
+                const tbody = document.getElementById('excelTableBody');
+                const mobileList = document.getElementById('mobileRecordList');
+
+                if (!list || list.length === 0) {
+                    const emptyHtml = filterDate ? `Không có xe nào trong ngày <b>${filterDate}</b>` : `Chưa có dữ liệu xe trong <b>${currentFilename}</b>`;
+                    tbody.innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-400 text-xs">${emptyHtml}</td></tr>`;
+                    mobileList.innerHTML = `<div class="py-8 text-center text-slate-400 text-xs">${emptyHtml}</div>`;
+                    return;
+                }
+
+                // Danh sách Card chi tiết trên Mobile
+                currentRecords = list;
+                mobileList.innerHTML = list.map((r, i) => `
+                    <div class="bg-white">
+                        <button type="button" onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full text-left px-4 py-3 active:bg-slate-50">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="min-w-0 flex items-center gap-2">
+                                    <span class="font-bold text-sm text-blue-700 license-plate shrink-0">${esc(r.bien_so)}</span>
+                                    <span class="text-sm font-semibold text-slate-800 truncate">${esc(r.hieu_xe)}</span>
+                                </div>
+                                <span class="text-sm font-bold ${r.bao_gia ? 'text-emerald-600' : 'text-slate-300'} shrink-0">${r.bao_gia ? esc(r.bao_gia) : '—'}</span>
+                            </div>
+                            <div class="mt-0.5 flex items-center justify-between gap-3">
+                                <span class="text-xs text-slate-500 truncate">${esc(r.noi_dung)}</span>
+                                <span class="shrink-0 flex items-center gap-1 text-[11px] font-semibold ${r.thanh_toan === 'Chưa Thanh Toán' ? 'text-amber-600' : 'text-emerald-600'}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${r.thanh_toan === 'Chưa Thanh Toán' ? 'bg-amber-500' : 'bg-emerald-500'}"></span>${esc(r.thanh_toan)}
+                                </span>
+                            </div>
+                        </button>
+                        <div class="hidden px-4 pb-3 text-xs text-slate-500 space-y-2">
+                            <div class="bg-slate-50 rounded-xl p-3 space-y-1">
+                                <div>#${esc(r.stt)} · ${esc(r.ngay)} · ${esc(r.dich_vu)}</div>
+                                <div class="text-slate-700">${esc(r.noi_dung)}</div>
+                                ${r.nguoi_thuc_hien ? `<div>Thợ: <b class="text-slate-700">${esc(r.nguoi_thuc_hien)}</b></div>` : ''}
+                                ${r.ghi_chu ? `<div class="text-amber-700">Ghi chú: ${esc(r.ghi_chu)}</div>` : ''}
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="openEdit(${i})" class="py-2 rounded-xl bg-blue-50 text-blue-700 text-sm font-semibold active:bg-blue-100">Sửa</button>
+                                <button onclick="deleteRecord('${esc(r.id)}', '${esc(r.month_key)}')" class="py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold active:bg-red-100">Xóa</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Bảng đầy đủ 10 cột trên Desktop
+                tbody.innerHTML = list.map((r, i) => `
+                    <tr class="hover:bg-slate-50/80 transition group">
+                        <td class="py-3 px-3 text-center text-slate-400 font-semibold text-xs">${r.stt}</td>
+                        <td class="py-3 px-3 text-center text-slate-500 text-xs font-medium">${r.ngay}</td>
+                        <td class="py-3 px-3 text-center">
+                            <span class="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2 py-0.5 rounded border border-blue-200/60 license-plate">
+                                ${r.bien_so}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 font-semibold text-slate-800">${r.hieu_xe}</td>
+                        <td class="py-3 px-3 text-center">${getServiceBadgeHtml(r.dich_vu)}</td>
+                        <td class="py-3 px-4 font-medium text-slate-700">${r.noi_dung}</td>
+                        <td class="py-3 px-3 text-right font-bold text-emerald-600">${r.bao_gia ? r.bao_gia + 'đ' : '<span class="text-slate-300 font-normal">—</span>'}</td>
+                        <td class="py-3 px-3 text-center">${getPaymentBadgeHtml(r.thanh_toan)}</td>
+                        <td class="py-3 px-3 text-slate-700 font-medium">${r.nguoi_thuc_hien || '<span class="text-slate-300 font-normal">—</span>'}</td>
+                        <td class="py-3 px-3 text-slate-500 text-xs">${r.ghi_chu || '<span class="text-slate-300">—</span>'}</td>
+                        <td class="py-3 px-2 text-center whitespace-nowrap">
+                            <button onclick="openEdit(${i})" class="text-slate-300 hover:text-blue-600 px-1.5 py-1 rounded-lg hover:bg-blue-50 transition text-xs font-semibold" title="Sửa dòng này">Sửa</button>
+                            <button
+                                onclick="deleteRecord('${esc(r.id)}', '${esc(r.month_key)}')"
+                                class="text-slate-300 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition"
+                                title="Xóa dòng này"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+        }
+
         async function loadRecords(monthKey = '') {
             const pin = getSavedPin();
             if (!pin) {
@@ -709,9 +884,12 @@
                     return;
                 }
                 const data = await res.json();
+                if (!res.ok) {
+                    showAlert(data.message || 'Không tải được dữ liệu, vui lòng thử lại.', 'error');
+                    return;
+                }
 
                 selectedMonthKey = data.month_key;
-                document.getElementById('recordCount').innerText = data.count || 0;
                 document.getElementById('activeFilenameBadge').innerText = data.filename || '';
                 document.getElementById('btnDownloadExcel').href = `/api/download-excel?month=${encodeURIComponent(selectedMonthKey)}&pin=${encodeURIComponent(pin)}`;
 
@@ -726,92 +904,85 @@
                     `).join('');
                 }
 
-                const tbody = document.getElementById('excelTableBody');
-                const mobileList = document.getElementById('mobileRecordList');
-
-                if (!data.records || data.records.length === 0) {
-                    const emptyHtml = `Chưa có dữ liệu xe trong <b>${data.filename}</b>`;
-                    tbody.innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-400 text-xs">${emptyHtml}</td></tr>`;
-                    mobileList.innerHTML = `<div class="py-8 text-center text-slate-400 text-xs">${emptyHtml}</div>`;
-                    return;
-                }
-
-                // Danh sách Card chi tiết trên Mobile
-                mobileList.innerHTML = data.records.map(r => `
-                    <div class="p-3.5 space-y-1.5 active:bg-slate-50">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-1.5 min-w-0">
-                                <span class="text-xs font-bold text-slate-400">#${r.stt}</span>
-                                <span class="bg-blue-50 text-blue-700 font-bold text-xs px-2 py-0.5 rounded border border-blue-200/70 license-plate">
-                                    ${r.bien_so}
-                                </span>
-                                <span class="font-bold text-sm text-slate-800 truncate">${r.hieu_xe}</span>
-                            </div>
-                            <span class="text-[11px] text-slate-400 shrink-0">${r.ngay}</span>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            ${getServiceBadgeHtml(r.dich_vu)}
-                            <span class="text-xs font-medium text-slate-700 truncate">${r.noi_dung}</span>
-                        </div>
-
-                        <div class="flex items-center justify-between pt-1">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-xs font-bold text-emerald-600">${r.bao_gia ? r.bao_gia + 'đ' : '—'}</span>
-                                ${getPaymentBadgeHtml(r.thanh_toan)}
-                                ${r.nguoi_thuc_hien ? `<span class="text-[11px] text-slate-600">👤 ${r.nguoi_thuc_hien}</span>` : ''}
-                            </div>
-                            <button
-                                onclick="deleteRecord(${r.row_id}, '${r.month_key}')"
-                                class="w-7 h-7 rounded-lg text-slate-300 active:text-red-600 flex items-center justify-center shrink-0"
-                                title="Xóa"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        ${r.ghi_chu ? `<div class="text-[11px] text-amber-700 bg-amber-50/60 rounded px-2 py-0.5">📝 ${r.ghi_chu}</div>` : ''}
-                    </div>
-                `).join('');
-
-                // Bảng đầy đủ 10 cột trên Desktop
-                tbody.innerHTML = data.records.map(r => `
-                    <tr class="hover:bg-slate-50/80 transition group">
-                        <td class="py-3 px-3 text-center text-slate-400 font-semibold text-xs">${r.stt}</td>
-                        <td class="py-3 px-3 text-center text-slate-500 text-xs font-medium">${r.ngay}</td>
-                        <td class="py-3 px-3 text-center">
-                            <span class="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2 py-0.5 rounded border border-blue-200/60 license-plate">
-                                ${r.bien_so}
-                            </span>
-                        </td>
-                        <td class="py-3 px-3 font-semibold text-slate-800">${r.hieu_xe}</td>
-                        <td class="py-3 px-3 text-center">${getServiceBadgeHtml(r.dich_vu)}</td>
-                        <td class="py-3 px-4 font-medium text-slate-700">${r.noi_dung}</td>
-                        <td class="py-3 px-3 text-right font-bold text-emerald-600">${r.bao_gia ? r.bao_gia + 'đ' : '<span class="text-slate-300 font-normal">—</span>'}</td>
-                        <td class="py-3 px-3 text-center">${getPaymentBadgeHtml(r.thanh_toan)}</td>
-                        <td class="py-3 px-3 text-slate-700 font-medium">${r.nguoi_thuc_hien || '<span class="text-slate-300 font-normal">—</span>'}</td>
-                        <td class="py-3 px-3 text-slate-500 text-xs">${r.ghi_chu || '<span class="text-slate-300">—</span>'}</td>
-                        <td class="py-3 px-2 text-center">
-                            <button
-                                onclick="deleteRecord(${r.row_id}, '${r.month_key}')"
-                                class="text-slate-300 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition"
-                                title="Xóa dòng này"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
+                allRecords = data.records || [];
+                currentFilename = data.filename || '';
+                renderRecords();
             } catch (err) {
                 console.error(err);
+            }
+        }
+
+        function openEdit(i) {
+            const r = currentRecords[i];
+            if (!r) return;
+            editingRow = { id: r.id, month_key: r.month_key };
+            document.getElementById('editTitle').innerText = `#${r.stt}`;
+            document.getElementById('editNgay').value = r.ngay || '';
+            document.getElementById('editBienSo').value = r.bien_so || '';
+            document.getElementById('editHieuXe').value = r.hieu_xe || '';
+            document.getElementById('editDichVu').value = r.dich_vu || 'Bảo Trì & Sửa Chữa';
+            document.getElementById('editNoiDung').value = r.noi_dung || '';
+            document.getElementById('editBaoGia').value = r.bao_gia || '';
+            document.getElementById('editThanhToan').value = r.thanh_toan || 'Chưa Thanh Toán';
+            document.getElementById('editNguoiTH').value = r.nguoi_thuc_hien || '';
+            document.getElementById('editGhiChu').value = r.ghi_chu || '';
+            document.getElementById('editError').classList.add('hidden');
+            document.getElementById('editOverlay').classList.remove('hidden');
+        }
+
+        function closeEdit() {
+            editingRow = null;
+            document.getElementById('editOverlay').classList.add('hidden');
+        }
+
+        async function saveEdit() {
+            if (!editingRow) return;
+            const errEl = document.getElementById('editError');
+            const btn = document.getElementById('btnSaveEdit');
+            const payload = {
+                ngay: document.getElementById('editNgay').value.trim(),
+                bien_so: document.getElementById('editBienSo').value.trim(),
+                hieu_xe: document.getElementById('editHieuXe').value.trim(),
+                dich_vu: document.getElementById('editDichVu').value,
+                noi_dung: document.getElementById('editNoiDung').value.trim(),
+                bao_gia: document.getElementById('editBaoGia').value.trim(),
+                thanh_toan: document.getElementById('editThanhToan').value,
+                nguoi_thuc_hien: document.getElementById('editNguoiTH').value.trim(),
+                ghi_chu: document.getElementById('editGhiChu').value.trim()
+            };
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/records/${encodeURIComponent(editingRow.id)}?month=${encodeURIComponent(editingRow.month_key)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-App-Pin': getSavedPin() },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.status === 401) { closeEdit(); showPinGate(true); return; }
+                if (!res.ok || !result.success) {
+                    errEl.innerText = (result.errors || ['Không lưu được.']).join(' • ');
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                closeEdit();
+                if (result.drive && result.drive.error) {
+                    showAlert(`Đã sửa trên server nhưng chưa cập nhật được Drive: ${result.drive.error}`, 'warning');
+                } else {
+                    showAlert('Đã cập nhật dòng dữ liệu.', 'success');
+                }
+                await loadRecords(selectedMonthKey);
+            } catch (e) {
+                errEl.innerText = 'Lỗi kết nối máy chủ.';
+                errEl.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
             }
         }
 
         async function deleteRecord(rowId, monthKey) {
             if (!confirm('Xóa dòng dữ liệu này khỏi file Excel?')) return;
             try {
-                const res = await fetch(`/api/records/${rowId}?month=${encodeURIComponent(monthKey || selectedMonthKey)}`, {
+                const res = await fetch(`/api/records/${encodeURIComponent(rowId)}?month=${encodeURIComponent(monthKey || selectedMonthKey)}`, {
                     method: 'DELETE',
                     headers: { 'X-App-Pin': getSavedPin() }
                 });
@@ -821,6 +992,9 @@
                 }
                 if (res.ok) {
                     await loadRecords(selectedMonthKey);
+                } else {
+                    const r = await res.json().catch(() => ({}));
+                    showAlert(r.message || 'Không xóa được dòng này, vui lòng thử lại.', 'error');
                 }
             } catch (err) {
                 console.error(err);

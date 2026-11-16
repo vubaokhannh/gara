@@ -59,8 +59,98 @@ function applyHeaderStyling(sheet) {
   sheet.setColumnWidth(10, 180); // Ghi Chú
 }
 
+// Ghi 1 dòng ở dạng CHỮ (tránh Sheets tự đổi biển số như "50E-72167" thành số khoa học 0,00E+00)
+function textFormats(n) {
+  const f = ["General"];
+  for (let i = 1; i < n; i++) f.push("@");
+  return [f];
+}
+
+function appendRowAsText(sheet, values) {
+  const row = sheet.getLastRow() + 1;
+  const range = sheet.getRange(row, 1, 1, values.length);
+  range.setNumberFormats(textFormats(values.length));
+  range.setValues([values]);
+  return row;
+}
+
+// Căn lề 1 dòng dữ liệu vừa thêm / vừa sửa
+function styleDataRow(sheet, row) {
+  sheet.getRange(row, 1).setHorizontalAlignment("center");
+  sheet.getRange(row, 2).setHorizontalAlignment("center");
+  sheet.getRange(row, 3).setHorizontalAlignment("center");
+  sheet.getRange(row, 5).setHorizontalAlignment("center");
+  sheet.getRange(row, 7).setHorizontalAlignment("right");
+  sheet.getRange(row, 8).setHorizontalAlignment("center");
+}
+
+const ID_COL = 11;          // Cột ID ẩn (mã duy nhất của mỗi bản ghi)
+const ID_HEADER = "ID";
+
+function newId() {
+  return Utilities.getUuid().replace(/-/g, "").slice(0, 12);
+}
+
+// Thêm cột ID (ẩn) để mỗi bản ghi có mã duy nhất, bảng vẫn hiển thị 10 cột chuẩn
+function ensureIdColumn(sheet) {
+  if (sheet.getRange(1, ID_COL).getValue() !== ID_HEADER) {
+    sheet.getRange(1, ID_COL).setValue(ID_HEADER);
+  }
+  sheet.hideColumns(ID_COL);
+}
+
+// Gán ID cho các dòng cũ chưa có ID
+function ensureIds(sheet) {
+  const last = sheet.getLastRow();
+  if (last < 2) return;
+  const range = sheet.getRange(2, ID_COL, last - 1, 1);
+  const vals = range.getValues();
+  let changed = false;
+  for (let i = 0; i < vals.length; i++) {
+    if (!vals[i][0]) {
+      vals[i][0] = newId();
+      changed = true;
+    }
+  }
+  if (changed) {
+    range.setNumberFormat("@");
+    range.setValues(vals);
+  }
+}
+
+function findRowById(sheet, id) {
+  const last = sheet.getLastRow();
+  if (last < 2 || !id) return -1;
+  const ids = sheet.getRange(2, ID_COL, last - 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(id)) return i + 2;
+  }
+  return -1;
+}
+
+function renumberStt(sheet) {
+  const last = sheet.getLastRow();
+  if (last < 2) return;
+  const nums = [];
+  for (let r = 2; r <= last; r++) nums.push([r - 1]);
+  const range = sheet.getRange(2, 1, last - 1, 1);
+  range.setNumberFormat("General");
+  range.setValues(nums);
+}
+
+// Chỉ cho 1 yêu cầu ghi chạy tại một thời điểm (tránh trùng STT / ghi chồng)
+function withLock(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getOrCreateMonthlySheet(monthKey) {
-  const mk = monthKey || "11_2026";
+  const mk = monthKey || Utilities.formatDate(new Date(), "GMT+7", "MM_yyyy");
   const fileName = "gara_" + mk;
   const folder = getOrCreateFolder();
   const files = folder.getFilesByName(fileName);
@@ -85,6 +175,7 @@ function getOrCreateMonthlySheet(monthKey) {
     applyHeaderStyling(sheet);
   }
 
+  ensureIdColumn(ss.getActiveSheet());
   return ss;
 }
 
@@ -115,12 +206,13 @@ function readRecordsFromSheet(ss, monthKey) {
   const records = [];
 
   if (lastRow >= 2) {
-    const numCols = Math.max(sheet.getLastColumn(), HEADERS.length);
+    const numCols = Math.max(sheet.getLastColumn(), ID_COL);
     const values = sheet.getRange(2, 1, lastRow - 1, numCols).getDisplayValues();
     for (let i = 0; i < values.length; i++) {
       const row = values[i];
       if (!row[1] && !row[2] && !row[3] && !row[5]) continue;
       records.push({
+        id: row[ID_COL - 1] || "",
         row_id: i + 2,
         stt: row[0] || (i + 1),
         month_key: monthKey,
@@ -132,12 +224,7 @@ function readRecordsFromSheet(ss, monthKey) {
         bao_gia: row[6] || "",
         thanh_toan: row[7] || "Chưa Thanh Toán",
         nguoi_thuc_hien: row[8] || "",
-        ghi_chu: row[9] || "",
-        // Tương thích ngược:
-        thoi_gian: row[1] || "",
-        hang_xe: row[3] || "",
-        gia: row[6] || "",
-        nguoi_phu_trach: row[8] || ""
+        ghi_chu: row[9] || ""
       });
     }
   }
@@ -148,7 +235,7 @@ function doGet(e) {
   try {
     const params = (e && e.parameter) || {};
     const action = params.action || "list";
-    const monthKey = params.month_key || "11_2026";
+    const monthKey = params.month_key || Utilities.formatDate(new Date(), "GMT+7", "MM_yyyy");
 
     if (action === "months") {
       return jsonResponse({
@@ -158,146 +245,97 @@ function doGet(e) {
       });
     }
 
-    const ss = getOrCreateMonthlySheet(monthKey);
-    const sheet = ss.getActiveSheet();
+    return withLock(function () {
+      const ss = getOrCreateMonthlySheet(monthKey);
+      const sheet = ss.getActiveSheet();
+      const fileUrl = ss.getUrl();
 
-    // Hỗ trợ thêm bản ghi ngay cả khi HTTP Redirect 302 chuyển POST thành GET
-    if (action === "append" && params.bien_so) {
-      const lastRow = sheet.getLastRow();
-      const stt = params.stt || (lastRow >= 1 ? lastRow : 1);
-      const ngay = params.ngay || params.thoi_gian || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy");
-      const bienSo = (params.bien_so || "").toUpperCase();
-      const hieuXe = params.hieu_xe || params.hang_xe || "";
-      const dichVu = params.dich_vu || "Bảo Trì & Sửa Chữa";
-      const noiDung = params.noi_dung || "";
-      const baoGia = params.bao_gia || params.gia || "";
-      const thanhToan = params.thanh_toan || "Chưa Thanh Toán";
-      const nguoiThucHien = params.nguoi_thuc_hien || params.nguoi_phu_trach || "";
-      const ghiChu = params.ghi_chu || "";
+      // THÊM bản ghi (an toàn khi gửi lại: cùng ID thì không ghi trùng)
+      if (action === "append") {
+        if (!params.bien_so) return jsonResponse({ success: false, error: "Thiếu biển số" });
 
-      sheet.appendRow([
-        stt,
-        ngay,
-        bienSo,
-        hieuXe,
-        dichVu,
-        noiDung,
-        baoGia,
-        thanhToan,
-        nguoiThucHien,
-        ghiChu
-      ]);
+        const id = params.id || newId();
+        const existing = findRowById(sheet, id);
+        if (existing > 0) {
+          return jsonResponse({
+            success: true,
+            duplicate: true,
+            id: id,
+            row_id: existing,
+            stt: sheet.getRange(existing, 1).getValue(),
+            file_url: fileUrl,
+            folder_url: getOrCreateFolder().getUrl()
+          });
+        }
 
-      const newRow = sheet.getLastRow();
-      sheet.getRange(newRow, 1).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 2).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 3).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 5).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 7).setHorizontalAlignment("right");
-      sheet.getRange(newRow, 8).setHorizontalAlignment("center");
+        const stt = Math.max(sheet.getLastRow(), 1);
+        const ngay = params.ngay || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy");
+        const newRow = appendRowAsText(sheet, [
+          stt,
+          ngay,
+          (params.bien_so || "").toUpperCase(),
+          params.hieu_xe || "",
+          params.dich_vu || "Bảo Trì & Sửa Chữa",
+          params.noi_dung || "",
+          params.bao_gia || "",
+          params.thanh_toan || "Chưa Thanh Toán",
+          params.nguoi_thuc_hien || "",
+          params.ghi_chu || "",
+          id
+        ]);
+        styleDataRow(sheet, newRow);
 
+        return jsonResponse({
+          success: true,
+          id: id,
+          row_id: newRow,
+          stt: stt,
+          file_url: fileUrl,
+          folder_url: getOrCreateFolder().getUrl()
+        });
+      }
+
+      // SỬA / XÓA: tìm dòng theo ID (không phụ thuộc số dòng)
+      if (action === "update" || action === "delete") {
+        ensureIds(sheet);
+        const row = findRowById(sheet, params.id);
+        if (row < 2) {
+          return jsonResponse({ success: false, not_found: true, error: "Không tìm thấy bản ghi (có thể đã bị xóa)." });
+        }
+
+        if (action === "update") {
+          const range = sheet.getRange(row, 2, 1, 9);
+          range.setNumberFormats([["@", "@", "@", "@", "@", "@", "@", "@", "@"]]);
+          range.setValues([[
+            params.ngay || "",
+            (params.bien_so || "").toUpperCase(),
+            params.hieu_xe || "",
+            params.dich_vu || "Bảo Trì & Sửa Chữa",
+            params.noi_dung || "",
+            params.bao_gia || "",
+            params.thanh_toan || "Chưa Thanh Toán",
+            params.nguoi_thuc_hien || "",
+            params.ghi_chu || ""
+          ]]);
+          styleDataRow(sheet, row);
+          return jsonResponse({ success: true, id: params.id, file_url: fileUrl });
+        }
+
+        sheet.deleteRow(row);
+        renumberStt(sheet);
+        return jsonResponse({ success: true, file_url: fileUrl });
+      }
+
+      // DANH SÁCH
+      ensureIds(sheet);
       return jsonResponse({
         success: true,
-        row_id: newRow,
-        file_url: ss.getUrl(),
-        folder_url: getOrCreateFolder().getUrl()
+        month_key: monthKey,
+        file_url: fileUrl,
+        folder_url: getOrCreateFolder().getUrl(),
+        months: listAvailableMonths(),
+        records: readRecordsFromSheet(ss, monthKey)
       });
-    }
-
-    if (action === "delete" && params.row_id) {
-      const rowId = parseInt(params.row_id, 10);
-      if (rowId >= 2 && rowId <= sheet.getLastRow()) {
-        sheet.deleteRow(rowId);
-        // Tái lập lại STT 1..N
-        for (let r = 2; r <= sheet.getLastRow(); r++) {
-          sheet.getRange(r, 1).setValue(r - 1);
-        }
-        return jsonResponse({ success: true, file_url: ss.getUrl() });
-      }
-      return jsonResponse({ success: false, error: "Row out of bounds" });
-    }
-
-    const records = readRecordsFromSheet(ss, monthKey);
-    return jsonResponse({
-      success: true,
-      month_key: monthKey,
-      file_url: ss.getUrl(),
-      folder_url: getOrCreateFolder().getUrl(),
-      months: listAvailableMonths(),
-      records: records
-    });
-  } catch (err) {
-    return jsonResponse({ success: false, error: err.toString() });
-  }
-}
-
-function doPost(e) {
-  try {
-    const body = JSON.parse(e.postData.contents || "{}");
-    const action = body.action || "append";
-    const monthKey = body.month_key || "11_2026";
-    const ss = getOrCreateMonthlySheet(monthKey);
-    const sheet = ss.getActiveSheet();
-
-    if (action === "append") {
-      const rec = body.record || body;
-      const lastRow = sheet.getLastRow();
-      const stt = rec.stt || (lastRow >= 1 ? lastRow : 1);
-      const ngay = rec.ngay || rec.thoi_gian || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy");
-      const bienSo = (rec.bien_so || "").toUpperCase();
-      const hieuXe = rec.hieu_xe || rec.hang_xe || "";
-      const dichVu = rec.dich_vu || "Bảo Trì & Sửa Chữa";
-      const noiDung = rec.noi_dung || "";
-      const baoGia = rec.bao_gia || rec.gia || "";
-      const thanhToan = rec.thanh_toan || "Chưa Thanh Toán";
-      const nguoiThucHien = rec.nguoi_thuc_hien || rec.nguoi_phu_trach || "";
-      const ghiChu = rec.ghi_chu || "";
-
-      sheet.appendRow([
-        stt,
-        ngay,
-        bienSo,
-        hieuXe,
-        dichVu,
-        noiDung,
-        baoGia,
-        thanhToan,
-        nguoiThucHien,
-        ghiChu
-      ]);
-
-      const newRow = sheet.getLastRow();
-      sheet.getRange(newRow, 1).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 2).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 3).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 5).setHorizontalAlignment("center");
-      sheet.getRange(newRow, 7).setHorizontalAlignment("right");
-      sheet.getRange(newRow, 8).setHorizontalAlignment("center");
-
-      return jsonResponse({
-        success: true,
-        row_id: newRow,
-        file_url: ss.getUrl(),
-        folder_url: getOrCreateFolder().getUrl()
-      });
-    }
-
-    if (action === "delete") {
-      const rowId = parseInt(body.row_id, 10);
-      if (rowId >= 2 && rowId <= sheet.getLastRow()) {
-        sheet.deleteRow(rowId);
-        for (let r = 2; r <= sheet.getLastRow(); r++) {
-          sheet.getRange(r, 1).setValue(r - 1);
-        }
-        return jsonResponse({ success: true, file_url: ss.getUrl() });
-      }
-      return jsonResponse({ success: false, error: "Row out of bounds" });
-    }
-
-    return jsonResponse({
-      success: true,
-      file_url: ss.getUrl(),
-      records: readRecordsFromSheet(ss, monthKey)
     });
   } catch (err) {
     return jsonResponse({ success: false, error: err.toString() });

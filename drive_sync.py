@@ -3,6 +3,8 @@ import os
 import json
 import urllib.request
 import urllib.parse
+import threading
+import time
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -64,116 +66,148 @@ def verify_pin(input_pin: str) -> bool:
     return str(input_pin or "").strip() == expected
 
 
-def _call_apps_script(webhook_url: str, params: dict) -> dict:
+class DriveError(Exception):
+    """Lỗi khi làm việc với Google Drive / Apps Script."""
+
+
+OUTDATED_SCRIPT_MSG = (
+    "Google Apps Script đang là bản cũ (chưa có mã ID cho từng dòng). "
+    "Hãy dán lại file google_apps_script.gs và Deploy phiên bản mới."
+)
+
+
+CACHE_TTL_SECONDS = 30
+_cache: dict = {}
+_cache_lock = threading.Lock()
+
+
+def _call_apps_script(webhook_url: str, params: dict, retries: int = 2) -> dict:
     """
-    Gửi request tới Google Apps Script Web App.
-    Truyền tham số trực tiếp qua Query String trên GET request để vượt qua 100% lỗi
-    302 Redirect của Google Apps Script (tránh bị mất body khi 302 chuyển POST -> GET).
+    Gửi request tới Google Apps Script Web App (GET + query string để tránh mất body khi 302).
+    Mọi thao tác đều an toàn khi gọi lại (thêm có ID chống trùng, sửa/xóa theo ID),
+    nên tự thử lại tối đa `retries` lần khi lỗi mạng / quá thời gian.
     """
     query_str = urllib.parse.urlencode(params)
     sep = "&" if "?" in webhook_url else "?"
     full_url = f"{webhook_url}{sep}{query_str}"
 
-    req = urllib.request.Request(full_url, method="GET")
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        body = resp.read().decode("utf-8")
-        return json.loads(body)
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            req = urllib.request.Request(full_url, method="GET")
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            if attempt < retries:
+                time.sleep(1.0 * (attempt + 1))
+    raise DriveError(f"Không kết nối được Google Drive: {last_err}")
 
 
-def sync_append_to_drive(month_key: str, record: dict) -> dict:
-    """
-    Gửi bản ghi mới sang Google Drive (Apps Script) với đầy đủ 10 trường thông tin.
-    """
-    webhook_url = get_drive_webhook_url()
-    if not webhook_url:
-        return {"synced": False, "reason": "Chưa cấu hình DRIVE_WEBHOOK_URL"}
+def _remember_links(month_key: str, data: dict) -> None:
+    if not (data.get("file_url") or data.get("folder_url")):
+        return
+    cfg = _load_local_config()
+    if data.get("file_url"):
+        file_urls = cfg.get("drive_file_urls") or {}
+        file_urls[month_key] = data["file_url"]
+        cfg["drive_file_urls"] = file_urls
+    if data.get("folder_url"):
+        cfg["drive_folder_url"] = data["folder_url"]
+    _save_local_config(cfg)
 
-    ngay = record.get("ngay") or record.get("thoi_gian", "")
-    hieu_xe = record.get("hieu_xe") or record.get("hang_xe", "")
-    bao_gia = record.get("bao_gia") or record.get("gia", "")
-    nguoi_thuc_hien = record.get("nguoi_thuc_hien") or record.get("nguoi_phu_trach", "")
 
-    params = {
-        "action": "append",
-        "month_key": month_key,
-        "stt": str(record.get("stt", "")),
-        "ngay": ngay,
+def _require_url() -> str:
+    url = get_drive_webhook_url()
+    if not url:
+        raise DriveError("Chưa cấu hình DRIVE_WEBHOOK_URL")
+    return url
+
+
+def _invalidate(month_key: str) -> None:
+    with _cache_lock:
+        _cache.pop(month_key, None)
+
+
+def drive_configured() -> bool:
+    return bool(get_drive_webhook_url())
+
+
+def drive_fetch_month(month_key: str, use_cache: bool = True) -> dict:
+    """Đọc toàn bộ dữ liệu 1 tháng từ Google Sheet (có cache ngắn 30 giây)."""
+    now = time.time()
+    if use_cache:
+        with _cache_lock:
+            hit = _cache.get(month_key)
+            if hit and now - hit[0] < CACHE_TTL_SECONDS:
+                return hit[1]
+
+    data = _call_apps_script(_require_url(), {"action": "list", "month_key": month_key})
+    if not data.get("success"):
+        raise DriveError(data.get("error", "Google Drive trả về lỗi"))
+    records = data.get("records") or []
+    if records and "id" not in records[0]:
+        raise DriveError(OUTDATED_SCRIPT_MSG)
+    _remember_links(month_key, data)
+    with _cache_lock:
+        _cache[month_key] = (now, data)
+    return data
+
+
+def _record_params(record: dict) -> dict:
+    return {
+        "ngay": record.get("ngay", ""),
         "bien_so": record.get("bien_so", ""),
-        "hieu_xe": hieu_xe,
+        "hieu_xe": record.get("hieu_xe", ""),
         "dich_vu": record.get("dich_vu", ""),
         "noi_dung": record.get("noi_dung", ""),
-        "bao_gia": str(bao_gia),
+        "bao_gia": str(record.get("bao_gia_hien_thi") or record.get("bao_gia") or ""),
         "thanh_toan": record.get("thanh_toan", ""),
-        "nguoi_thuc_hien": nguoi_thuc_hien,
+        "nguoi_thuc_hien": record.get("nguoi_thuc_hien", ""),
         "ghi_chu": record.get("ghi_chu", ""),
-        # Tương thích ngược:
-        "thoi_gian": ngay,
-        "hang_xe": hieu_xe,
-        "gia": str(bao_gia),
-        "nguoi_phu_trach": nguoi_thuc_hien,
     }
 
+
+def drive_append(month_key: str, rec_id: str, record: dict) -> dict:
+    """Thêm bản ghi (cùng rec_id gửi lại nhiều lần vẫn chỉ ghi 1 dòng)."""
+    params = {"action": "append", "month_key": month_key, "id": rec_id, **_record_params(record)}
     try:
-        data = _call_apps_script(webhook_url, params)
-        if data.get("success"):
-            cfg = _load_local_config()
-            if data.get("file_url"):
-                file_urls = cfg.get("drive_file_urls") or {}
-                file_urls[month_key] = data["file_url"]
-                cfg["drive_file_urls"] = file_urls
-            if data.get("folder_url"):
-                cfg["drive_folder_url"] = data["folder_url"]
-            _save_local_config(cfg)
-            return {
-                "synced": True,
-                "file_url": data.get("file_url", ""),
-                "folder_url": data.get("folder_url", ""),
-            }
-        return {"synced": False, "error": data.get("error", "Unknown error")}
-    except Exception as e:
-        return {"synced": False, "error": str(e)}
+        data = _call_apps_script(_require_url(), params)
+    finally:
+        _invalidate(month_key)
+    if not data.get("success"):
+        raise DriveError(data.get("error", "Google Drive từ chối ghi dữ liệu"))
+    if "id" not in data:
+        raise DriveError(OUTDATED_SCRIPT_MSG)
+    _remember_links(month_key, data)
+    return data
 
 
-def sync_delete_from_drive(month_key: str, row_id: int) -> dict:
-    """Xóa dòng tương ứng trên file Google Drive của tháng đó."""
-    webhook_url = get_drive_webhook_url()
-    if not webhook_url:
-        return {"synced": False}
-
-    params = {
-        "action": "delete",
-        "month_key": month_key,
-        "row_id": str(row_id),
-    }
+def drive_update(month_key: str, rec_id: str, record: dict) -> bool:
+    """Sửa bản ghi theo ID. Trả về False nếu không tìm thấy."""
+    params = {"action": "update", "month_key": month_key, "id": rec_id, **_record_params(record)}
     try:
-        data = _call_apps_script(webhook_url, params)
-        return {"synced": bool(data.get("success"))}
-    except Exception:
-        return {"synced": False}
+        data = _call_apps_script(_require_url(), params)
+    finally:
+        _invalidate(month_key)
+    if data.get("success"):
+        return True
+    if data.get("not_found"):
+        return False
+    raise DriveError(data.get("error", "Google Drive từ chối cập nhật"))
 
 
-def fetch_month_from_drive(month_key: str) -> dict:
-    """
-    Kéo dữ liệu của 1 tháng từ Google Drive về Server.
-    """
-    webhook_url = get_drive_webhook_url()
-    if not webhook_url:
-        return {"success": False}
-
+def drive_delete(month_key: str, rec_id: str) -> bool:
+    """Xóa bản ghi theo ID. Trả về False nếu không tìm thấy."""
     try:
-        data = _call_apps_script(webhook_url, {"action": "list", "month_key": month_key})
-        if data.get("success"):
-            cfg = _load_local_config()
-            if data.get("file_url"):
-                file_urls = cfg.get("drive_file_urls") or {}
-                file_urls[month_key] = data["file_url"]
-                cfg["drive_file_urls"] = file_urls
-            if data.get("folder_url"):
-                cfg["drive_folder_url"] = data["folder_url"]
-            _save_local_config(cfg)
-        return data
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+        data = _call_apps_script(_require_url(), {"action": "delete", "month_key": month_key, "id": rec_id})
+    finally:
+        _invalidate(month_key)
+    if data.get("success"):
+        return True
+    if data.get("not_found"):
+        return False
+    raise DriveError(data.get("error", "Google Drive từ chối xóa"))
 
 
 def get_saved_drive_links(month_key: str) -> dict:

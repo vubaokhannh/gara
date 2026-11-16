@@ -508,6 +508,144 @@ def parse_price_input(price_val) -> int:
     return int(cleaned) if cleaned else 0
 
 
+# ---------------------------------------------------------------------------
+# CHUYỂN SỐ ĐỌC BẰNG CHỮ -> CHỮ SỐ (trước khi tách thông tin)
+# VD: "một triệu hai" -> "1 triệu 2", "năm mươi mốt a một hai ba bốn năm" -> "51A 12345"
+# ---------------------------------------------------------------------------
+_PLATE_DIGITS = {
+    "không": 0, "một": 1, "hai": 2, "ba": 3, "bốn": 4, "năm": 5,
+    "sáu": 6, "bảy": 7, "bẩy": 7, "tám": 8, "chín": 9,
+}
+_UNIT_DIGITS = {**_PLATE_DIGITS, "mốt": 1, "tư": 4, "lăm": 5}
+_BIG_UNITS = {"nghìn", "ngàn", "triệu"}
+_NUM_WORDS = set(_UNIT_DIGITS) | _BIG_UNITS | {"mười", "mươi", "trăm", "linh", "lẻ"}
+_NUM_MARKERS = _BIG_UNITS | {"trăm", "mươi", "mười"}
+_PUNCT = ",.;:!?"
+
+
+def _core(token: str) -> str:
+    return token.strip(_PUNCT).lower()
+
+
+def _trail(token: str) -> str:
+    return token[len(token.rstrip(_PUNCT)):]
+
+
+def _is_letter(token: str) -> bool:
+    c = _core(token)
+    return len(c) == 1 and c.isalpha()
+
+
+def _parse_small(words: list):
+    """Đọc số dưới 1000: ['hai','trăm','năm','mươi'] -> 250."""
+    total, cur = 0, None
+    for w in words:
+        if w in _UNIT_DIGITS:
+            cur = _UNIT_DIGITS[w]
+        elif w == "trăm":
+            total += (cur if cur is not None else 1) * 100
+            cur = None
+        elif w == "mười":
+            total += 10
+            cur = None
+        elif w == "mươi":
+            total += (cur if cur is not None else 1) * 10
+            cur = None
+    return total + (cur or 0)
+
+
+def _convert_number_run(words: list):
+    """Đổi 1 cụm số chữ thành dạng 'N triệu M nghìn' để bộ tách giá hiểu được."""
+    out, seg = [], []
+    for w in words:
+        if w in _BIG_UNITS:
+            if not seg:
+                return None
+            out.append(f"{_parse_small(seg)} {w}")
+            seg = []
+        else:
+            seg.append(w)
+    if seg:
+        out.append(str(_parse_small(seg)))
+    return " ".join(out)
+
+
+def _try_spoken_plate(tokens: list, i: int):
+    """Nhận diện biển số đọc bằng chữ tại vị trí i. Trả về (chuỗi biển, vị trí kế tiếp) hoặc None."""
+    n = len(tokens)
+    t = _core(tokens[i])
+    j = i + 1
+
+    if re.fullmatch(r"\d{2}", t):
+        prov = t
+    elif t in _PLATE_DIGITS and i + 1 < n and _core(tokens[i + 1]) == "mươi" or t == "mười":
+        base = 10 if t == "mười" else _PLATE_DIGITS[t] * 10
+        if t != "mười":
+            j = i + 2
+        unit = 0
+        if j + 1 < n and _core(tokens[j]) in _UNIT_DIGITS and _is_letter(tokens[j + 1]):
+            unit = _UNIT_DIGITS[_core(tokens[j])]
+            j += 1
+        prov = str(base + unit)
+    elif t in _PLATE_DIGITS and i + 2 < n and _core(tokens[i + 1]) in _PLATE_DIGITS and _is_letter(tokens[i + 2]):
+        prov = f"{_PLATE_DIGITS[t]}{_PLATE_DIGITS[_core(tokens[i + 1])]}"
+        j = i + 2
+    else:
+        return None
+
+    if j >= n or not _is_letter(tokens[j]):
+        return None
+    letters = _core(tokens[j])
+    j += 1
+    if j < n and _is_letter(tokens[j]):
+        letters += _core(tokens[j])
+        j += 1
+
+    digits = ""
+    while j < n and len(digits) < 5:
+        c = _core(tokens[j])
+        if c in _PLATE_DIGITS:
+            digits += str(_PLATE_DIGITS[c])
+        elif re.fullmatch(r"\d", c):
+            digits += c
+        else:
+            break
+        j += 1
+    if len(digits) < 4:
+        return None
+    return f"{prov}{letters.upper()} {digits}{_trail(tokens[j - 1])}", j
+
+
+def normalize_spoken_numbers(text: str) -> str:
+    """Đổi biển số và số tiền đọc bằng chữ sang chữ số."""
+    tokens = (text or "").split()
+    out, i, n = [], 0, len(tokens)
+    while i < n:
+        plate = _try_spoken_plate(tokens, i)
+        if plate:
+            out.append(plate[0])
+            i = plate[1]
+            continue
+
+        if _core(tokens[i]) in _NUM_WORDS:
+            j = i
+            while j < n and _core(tokens[j]) in _NUM_WORDS:
+                j += 1
+            words = [_core(t) for t in tokens[i:j]]
+            if any(w in _NUM_MARKERS for w in words):
+                tail = ""
+                if words[-1] == "trăm" and j < n and _core(tokens[j]) == "rưỡi":
+                    words, tail = words[:-1], " trăm"
+                converted = _convert_number_run(words)
+                if converted:
+                    out.append(converted + tail + _trail(tokens[j - 1]))
+                    i = j
+                    continue
+        out.append(tokens[i])
+        i += 1
+    return " ".join(out)
+
+
 def parse_voice_text(text: str) -> dict:
     """
     Phân tích câu nói của nhân viên thành cấu trúc 10 cột chuẩn của Gara Ô tô:
@@ -542,7 +680,8 @@ def parse_voice_text(text: str) -> dict:
             "errors": ["Vui lòng nói hoặc nhập thông tin xe."],
         }
 
-    working_text = raw_text
+    norm_text = normalize_spoken_numbers(raw_text)
+    working_text = norm_text
 
     # 1. Trích xuất Ghi chú (nếu nói "ghi chú ...", "lưu ý ...", hoặc "hẹn ...")
     ghi_chu = ""
@@ -610,7 +749,7 @@ def parse_voice_text(text: str) -> dict:
 
     # 6. Nhận diện nhóm Dịch vụ ("Bảo Trì & Sửa Chữa" vs "Đồng Sơn TM")
     dich_vu = "Bảo Trì & Sửa Chữa"
-    lower_raw = raw_text.lower()
+    lower_raw = norm_text.lower()
     if any(ds_kw in lower_raw for ds_kw in DONG_SON_KEYWORDS):
         dich_vu = "Đồng Sơn TM"
 
@@ -676,7 +815,7 @@ def parse_voice_text(text: str) -> dict:
 
     if not noi_dung:
         found_services = []
-        temp_lower = raw_text.lower()
+        temp_lower = norm_text.lower()
         for srv in KNOWN_SERVICES:
             if re.search(rf"\b{re.escape(srv)}\b", temp_lower):
                 found_services.append(srv.capitalize())

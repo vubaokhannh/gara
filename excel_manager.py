@@ -353,45 +353,61 @@ def delete_record_by_row(row_id: int, month_key: str = "") -> bool:
         return False
 
 
-def replace_month_records_from_drive(month_key: str, drive_records: list[dict]) -> None:
-    """Đồng bộ toàn bộ danh sách bản ghi từ Google Drive về file Excel local."""
+def update_record_by_row(row_id: int, record: dict, month_key: str = "") -> dict | None:
+    """Sửa 1 dòng (giữ nguyên STT). Trả về bản ghi đã cập nhật hoặc None nếu không có dòng."""
     with _excel_lock:
         mk = get_month_key_from_date(month_key)
-        file_path = get_excel_path_for_month(mk)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        ensure_excel_file(mk)
-
+        file_path = ensure_excel_file(mk)
         wb = load_workbook(file_path)
         ws = wb.active
+        if not (2 <= row_id <= ws.max_row):
+            return None
 
-        for idx, rec in enumerate(drive_records, start=1):
-            bao_gia_int = parse_price_input(rec.get("bao_gia") if "bao_gia" in rec else rec.get("gia"))
-            bao_gia_formatted = format_price_vn(bao_gia_int) if bao_gia_int > 0 else ""
-            stt = rec.get("stt") or idx
-            ngay = rec.get("ngay") or rec.get("thoi_gian", "")
-            bien_so = rec.get("bien_so", "")
-            hieu_xe = rec.get("hieu_xe") or rec.get("hang_xe", "")
-            dich_vu = rec.get("dich_vu", "Bảo Trì & Sửa Chữa")
-            noi_dung = rec.get("noi_dung", "")
-            thanh_toan = rec.get("thanh_toan", "Chưa Thanh Toán")
-            nguoi_thuc_hien = rec.get("nguoi_thuc_hien") or rec.get("nguoi_phu_trach", "")
-            ghi_chu = rec.get("ghi_chu", "")
-
-            ws.append(
-                [
-                    stt,
-                    ngay,
-                    bien_so,
-                    hieu_xe,
-                    dich_vu,
-                    noi_dung,
-                    bao_gia_formatted,
-                    thanh_toan,
-                    nguoi_thuc_hien,
-                    ghi_chu,
-                ]
-            )
-            _style_data_row(ws, ws.max_row)
-
+        bao_gia_int = parse_price_input(record.get("bao_gia"))
+        bao_gia_fmt = format_price_vn(bao_gia_int) if bao_gia_int > 0 else ""
+        values = [
+            record.get("ngay", ""),
+            record.get("bien_so", ""),
+            record.get("hieu_xe", ""),
+            record.get("dich_vu", "Bảo Trì & Sửa Chữa"),
+            record.get("noi_dung", ""),
+            bao_gia_fmt,
+            record.get("thanh_toan", "Chưa Thanh Toán"),
+            record.get("nguoi_thuc_hien", ""),
+            record.get("ghi_chu", ""),
+        ]
+        for offset, val in enumerate(values):
+            ws.cell(row=row_id, column=2 + offset).value = val
         wb.save(file_path)
+        return {**record, "row_id": row_id, "month_key": mk, "bao_gia": bao_gia_fmt}
+
+
+def build_xlsx_bytes(records: list, month_key: str = "") -> bytes:
+    """Tạo file .xlsx trong bộ nhớ từ danh sách bản ghi (cũ nhất trước). Không ghi ra đĩa."""
+    from io import BytesIO
+
+    mk = get_month_key_from_date(month_key)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Thang_{mk}"
+    ws.append(HEADERS)
+    _style_header_row(ws)
+    for idx, rec in enumerate(records, start=1):
+        ws.append(
+            [
+                rec.get("stt") or idx,
+                rec.get("ngay", ""),
+                rec.get("bien_so", ""),
+                rec.get("hieu_xe", ""),
+                rec.get("dich_vu", ""),
+                rec.get("noi_dung", ""),
+                rec.get("bao_gia", ""),
+                rec.get("thanh_toan", ""),
+                rec.get("nguoi_thuc_hien", ""),
+                rec.get("ghi_chu", ""),
+            ]
+        )
+        _style_data_row(ws, ws.max_row)
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
