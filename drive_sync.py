@@ -93,17 +93,36 @@ def _call_apps_script(webhook_url: str, params: dict, retries: int = 1) -> dict:
     Mọi thao tác đều an toàn khi gọi lại (thêm có ID chống trùng, sửa/xóa theo ID),
     nên tự thử lại tối đa `retries` lần khi lỗi mạng / quá thời gian.
     """
-    last_err = None
+    last_err = ""
     for attempt in range(retries + 1):
         try:
             resp = _session.get(webhook_url, params=params, timeout=20)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:  # noqa: BLE001
-            last_err = e
+            last_err = _describe_error(e)
             if attempt < retries:
                 time.sleep(1.0 * (attempt + 1))
     raise DriveError(f"Không kết nối được Google Drive: {last_err}")
+
+
+def _describe_error(e: Exception) -> str:
+    """Mô tả lỗi bằng tiếng Việt, KHÔNG kèm link Apps Script (link là bí mật: ai có link cũng sửa được dữ liệu)."""
+    if isinstance(e, requests.exceptions.Timeout):
+        return "Google trả lời quá chậm (quá 20 giây), thử lại sau ít giây."
+    if isinstance(e, requests.exceptions.HTTPError):
+        code = e.response.status_code if e.response is not None else "?"
+        if code in (401, 403):
+            return f"Google từ chối truy cập (HTTP {code}) - kiểm tra Apps Script đang để 'Ai có quyền truy cập' là 'Bất kỳ ai'."
+        if code == 404:
+            return "Không tìm thấy Apps Script (HTTP 404) - link DRIVE_WEBHOOK_URL có thể sai hoặc bản triển khai đã bị xóa."
+        return f"Google trả về lỗi HTTP {code}."
+    if isinstance(e, requests.exceptions.ConnectionError):
+        return "Không kết nối được tới máy chủ Google (lỗi mạng)."
+    if isinstance(e, ValueError):  # JSON không đọc được
+        return ("Google trả về nội dung không đúng định dạng - thường do link Apps Script sai hoặc "
+                "chưa cho phép 'Bất kỳ ai' truy cập (Google trả về trang đăng nhập).")
+    return f"Lỗi không xác định ({type(e).__name__})."
 
 
 def _remember_links(month_key: str, data: dict) -> None:

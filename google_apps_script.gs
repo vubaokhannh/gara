@@ -28,7 +28,7 @@ const HEADERS = [
 const BASE_COLS = 10; // 10 cột chuẩn ban đầu
 
 // Điền link Render của bạn vào đây (VD: "https://gara.onrender.com") để tự động giữ Server thức 24/24
-const RENDER_APP_URL = "https://gara.onrender.com";
+const RENDER_APP_URL = "https://gara-dny6.onrender.com";
 
 // Cache ID/URL thư mục 6 giờ để không phải tìm lại thư mục ở mỗi lần gọi
 function getOrCreateFolder() {
